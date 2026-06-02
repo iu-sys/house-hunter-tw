@@ -290,7 +290,9 @@ export default function App() {
                 </div>
                               <div>
                   <dt>{conditionMatchLabel}</dt>
-                  <dd>{selectedListing.conditionScore || 0}/11</dd>
+                  <dd>
+                    {selectedListing.conditionScore || 0}/{getConditionTotal(selectedListing)}
+                  </dd>
                 </div>
               </dl>
               <ConditionTags listing={selectedListing} />
@@ -316,9 +318,17 @@ function ConditionScore({ listing }) {
   const score = listing.conditionScore || 0;
   return (
     <span className={score >= 8 ? "condition-score strong" : "condition-score"}>
-      {score}/11
+      {score}/{getConditionTotal(listing)}
     </span>
   );
+}
+
+function getConditionTotal(listing) {
+  const matched = listing.matchedConditions || [];
+  const missing = (listing.missingConditions || []).filter(
+    (condition) => condition !== "詳情頁讀取失敗",
+  );
+  return matched.length + missing.length;
 }
 
 function CompactConditionTags({ listing }) {

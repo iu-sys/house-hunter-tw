@@ -57,15 +57,13 @@ const FEMALE_ONLY_PATTERNS = [
 ];
 
 const REQUIRED_CONDITIONS = [
-  { label: "格局方正", test: (text) => text.includes("格局方正") },
   { label: "對外窗", test: (text) => text.includes("對外窗") },
   { label: "捷運10分內", test: (text) => isMetroWithinTenMinutes(text) },
   { label: "有網路", test: (text) => /網路|寬頻|Wi-?Fi|wifi/i.test(text) },
   { label: "衣櫃", test: (text) => /衣櫃|衣柜/.test(text) },
-  { label: "禁菸房", test: (text) => /禁菸|禁煙|不可抽菸|不能抽菸|不抽菸|禁抽菸/.test(text) },
   { label: "有租補", test: (text) => /租補|租屋補助|可申請補助|補助/.test(text) },
   { label: "台水台電或電費5元內", test: (text) => hasAcceptableUtilityRate(text) },
-  { label: "附近有711", test: (text) => /7-11|711|便利商店|超商/.test(text) },
+  { label: "711走路2分鐘內", test: (text) => hasSevenElevenWithinTwoMinutes(text) },
   { label: "冰箱", test: (text) => text.includes("冰箱") },
   { label: "電視", test: (text) => text.includes("電視") },
 ];
@@ -140,6 +138,20 @@ function hasAcceptableUtilityRate(text) {
   ];
 
   return utilityPatterns.some((pattern) => pattern.test(text));
+}
+
+function hasSevenElevenWithinTwoMinutes(text) {
+  const storePattern = /(?:7-11|711|7-ELEVEN|便利商店|超商)/i;
+  const directMinutePattern = /(?:7-11|711|7-ELEVEN|便利商店|超商).{0,30}(?:走路|步行)?\s*(?:2\s*分|2\s*分鐘|二\s*分|二\s*分鐘)|(?:走路|步行)?\s*(?:2\s*分|2\s*分鐘|二\s*分|二\s*分鐘).{0,30}(?:7-11|711|7-ELEVEN|便利商店|超商)/i;
+  if (directMinutePattern.test(text)) return true;
+
+  const distanceMatches = [
+    ...text.matchAll(/(?:7-11|711|7-ELEVEN|便利商店|超商)[^0-9]{0,30}(\d{1,4})\s*公尺/gi),
+    ...text.matchAll(/距(?:7-11|711|7-ELEVEN|便利商店|超商)[^0-9]{0,30}(\d{1,4})\s*公尺/gi),
+  ];
+
+  if (distanceMatches.some((match) => Number(match[1]) <= 160)) return true;
+  return storePattern.test(text) && /2\s*分|2\s*分鐘|二\s*分|二\s*分鐘/.test(text);
 }
 
 function parseListing(item) {
