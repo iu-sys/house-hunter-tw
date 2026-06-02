@@ -326,7 +326,18 @@ td:nth-child(7) {
 }
 
 tbody tr:hover {
-  background: #f9fbfb;
+  background: #f2fbf8;
+  cursor: pointer;
+}
+
+tbody tr:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: -2px;
+}
+
+tbody tr.selected-row {
+  background: #e8f7f3;
+  box-shadow: inset 4px 0 0 #0f766e;
 }
 
 .price {

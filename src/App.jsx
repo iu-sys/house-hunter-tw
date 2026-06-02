@@ -55,6 +55,7 @@ export default function App() {
   const [selectedSources, setSelectedSources] = useState([]);
   const [onlyNew, setOnlyNew] = useState(false);
   const [sortKey, setSortKey] = useState("condition-fit");
+  const [selectedListingId, setSelectedListingId] = useState("");
   const [refreshNote, setRefreshNote] = useState("");
 
   const stats = useMemo(() => getStats(listings), []);
@@ -69,7 +70,8 @@ export default function App() {
     return sortListings(filtered, sortKey);
   }, [maxPrice, onlyNew, query, selectedDistricts, selectedSources, sortKey]);
 
-  const selectedListing = visibleListings[0] || null;
+  const selectedListing =
+    visibleListings.find((listing) => listing.id === selectedListingId) || visibleListings[0] || null;
   const visibleStats = getStats(visibleListings);
 
   return (
@@ -211,7 +213,18 @@ export default function App() {
               </thead>
               <tbody>
                 {visibleListings.map((listing) => (
-                  <tr key={listing.id}>
+                  <tr
+                    className={selectedListing?.id === listing.id ? "selected-row" : ""}
+                    key={listing.id}
+                    onClick={() => setSelectedListingId(listing.id)}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedListingId(listing.id);
+                      }
+                    }}
+                  >
                     <td>{listing.district}</td>
                     <td className="price">{listing.priceText}</td>
                     <td>
@@ -232,7 +245,13 @@ export default function App() {
                       <ConditionScore listing={listing} />
                     </td>
                     <td>
-                      <a className="open-link" href={listing.url} target="_blank" rel="noreferrer">
+                      <a
+                        className="open-link"
+                        href={listing.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <ExternalLink size={15} />
                       </a>
                     </td>
