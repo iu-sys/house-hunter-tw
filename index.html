@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>房子獵人</title>
+    <style>
+      .fallback-app {
+        background: #f6f8fa;
+        color: #1b2630;
+        font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+        min-height: 100vh;
+        padding: 22px;
+      }
+
+      .fallback-app header,
+      .fallback-stats,
+      .fallback-table {
+        margin: 0 auto 14px;
+        max-width: 1180px;
+      }
+
+      .fallback-app header {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .fallback-app h1 {
+        font-size: 24px;
+        margin: 0;
+      }
+
+      .fallback-app p {
+        color: #657381;
+        margin: 4px 0 0;
+      }
+
+      .fallback-stats {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .fallback-stat,
+      .fallback-table {
+        background: #fff;
+        border: 1px solid #dde5ea;
+        border-radius: 8px;
+      }
+
+      .fallback-stat {
+        padding: 14px 16px;
+      }
+
+      .fallback-stat span {
+        color: #657381;
+        display: block;
+        font-size: 13px;
+      }
+
+      .fallback-stat strong {
+        display: block;
+        font-size: 24px;
+        margin-top: 4px;
+      }
+
+      .fallback-table {
+        overflow: auto;
+      }
+
+      .fallback-table table {
+        border-collapse: collapse;
+        min-width: 860px;
+        width: 100%;
+      }
+
+      .fallback-table th,
+      .fallback-table td {
+        border-top: 1px solid #e4ecef;
+        font-size: 14px;
+        padding: 11px 12px;
+        text-align: left;
+      }
+
+      .fallback-table th {
+        background: #f3f7f8;
+        color: #596877;
+        font-size: 12px;
+      }
+
+      .fallback-price {
+        color: #0f766e;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .fallback-new {
+        background: #f59e0b;
+        border-radius: 6px;
+        color: #fff;
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 800;
+        margin-right: 6px;
+        padding: 2px 6px;
+      }
+
+      .fallback-table a {
+        color: #0f766e;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      @media (max-width: 760px) {
+        .fallback-app {
+          padding: 14px;
+        }
+
+        .fallback-app header,
+        .fallback-stats {
+          display: block;
+        }
+
+        .fallback-stat {
+          margin-bottom: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <main class="fallback-app">
+        <header>
+          <div>
+            <h1>房子獵人</h1>
+            <p>雙北套房快篩表，更新：2026-06-02 17:20</p>
+          </div>
+          <p>React 互動版載入後可篩選、排序與搜尋</p>
+        </header>
+        <section class="fallback-stats" aria-label="搜尋統計">
+          <div class="fallback-stat"><span>符合筆數</span><strong>69</strong></div>
+          <div class="fallback-stat"><span>新上架</span><strong>11</strong></div>
+          <div class="fallback-stat"><span>最低價</span><strong>7,200元/月</strong></div>
+          <div class="fallback-stat"><span>主要熱區</span><strong>中和區</strong></div>
+        </section>
+        <section class="fallback-table">
+          <table>
+            <thead>
+              <tr>
+                <th>區域</th>
+                <th>價格</th>
+                <th>標題</th>
+                <th>坪數</th>
+                <th>捷運站</th>
+                <th>連結</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>三重區</td><td class="fallback-price">7,200元/月</td><td><span class="fallback-new">新</span>分租套房生活機能佳.溫馨舒適套房</td><td>5坪</td><td>三和國中</td><td><a href="https://rent.591.com.tw/21360669">開啟</a></td></tr>
+              <tr><td>板橋區</td><td class="fallback-price">8,500元/月</td><td><span class="fallback-new">新</span>板橋江子翠2樓出租套房(有對外窗)</td><td>6坪</td><td>五福新村站</td><td><a href="https://rent.591.com.tw/21369218">開啟</a></td></tr>
+              <tr><td>中和區</td><td class="fallback-price">9,500元/月</td><td><span class="fallback-new">新</span>[PTT] 四號公園永安捷運站單身優氧套房</td><td>8坪</td><td>永安捷運站</td><td><a href="https://www.ptt.cc/bbs/Rent_tao/M.1780094225.A.6B9.html">開啟</a></td></tr>
+              <tr><td>中和區</td><td class="fallback-price">10,000元/月</td><td><span class="fallback-new">新</span>『近遠東ABC』優質溫馨小窩</td><td>6坪</td><td>中原</td><td><a href="https://rent.591.com.tw/21374717">開啟</a></td></tr>
+              <tr><td>信義區</td><td class="fallback-price">10,000元/月</td><td><span class="fallback-new">新</span>[PTT] 北醫三興國小旁優質套房出租</td><td>約7坪</td><td>六張犁站</td><td><a href="https://www.ptt.cc/bbs/Rent_tao/M.1780148519.A.E24.html">開啟</a></td></tr>
+              <tr><td>信義區</td><td class="fallback-price">10,900元/月</td><td><span class="fallback-new">新</span>信義區新裝修小套房</td><td>7坪</td><td>南京三民</td><td><a href="https://rent.591.com.tw/21334435">開啟</a></td></tr>
+              <tr><td>板橋區</td><td class="fallback-price">12,973元/月</td><td><span class="fallback-new">新</span>租補台電近致理科大門禁管理高採光套房</td><td>8坪</td><td>板橋前站</td><td><a href="https://rent.591.com.tw/21369662">開啟</a></td></tr>
+              <tr><td>中和區</td><td class="fallback-price">15,000元/月</td><td><span class="fallback-new">新</span>南勢角捷運3分鐘/1房1廳/可開伙</td><td>11坪</td><td>米蘭站</td><td><a href="https://rent.591.com.tw/21378294">開啟</a></td></tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
