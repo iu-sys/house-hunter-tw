@@ -37,6 +37,13 @@ const districts = [
 ].sort((a, b) => a.localeCompare(b, "zh-Hant"));
 const sources = [...new Set(listings.map((listing) => listing.source))];
 
+const conditionSortLabel = "\u689d\u4ef6\u7b26\u5408\u5ea6";
+const conditionColumnLabel = "\u689d\u4ef6";
+const conditionMatchLabel = "\u689d\u4ef6\u7b26\u5408";
+const conditionMatchedLabel = "\u7b26\u5408";
+const conditionPendingLabel = "\u5f85\u78ba\u8a8d";
+const conditionEmptyLabel = "\u5c1a\u672a\u547d\u4e2d";
+
 function toggleValue(values, value) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
@@ -179,7 +186,7 @@ export default function App() {
             <label className="sort-control">
               <ArrowDownUp size={16} />
               <select value={sortKey} onChange={(event) => setSortKey(event.target.value)}>
-                <option value="condition-fit">?????</option>
+                <option value="condition-fit">{conditionSortLabel}</option>
                 <option value="new-first">新上架優先</option>
                 <option value="price-asc">價格低到高</option>
                 <option value="price-desc">價格高到低</option>
@@ -198,6 +205,7 @@ export default function App() {
                   <th>坪數</th>
                   <th>捷運站</th>
                   <th>來源</th>
+                  <th>{conditionColumnLabel}</th>
                   <th>連結</th>
                 </tr>
               </thead>
@@ -260,7 +268,12 @@ export default function App() {
                   <dt>來源</dt>
                   <dd>{selectedListing.source}</dd>
                 </div>
+                              <div>
+                  <dt>{conditionMatchLabel}</dt>
+                  <dd>{selectedListing.conditionScore || 0}/11</dd>
+                </div>
               </dl>
+              <ConditionTags listing={selectedListing} />
               <a className="primary-link" href={selectedListing.url} target="_blank" rel="noreferrer">
                 打開物件
                 <ExternalLink size={16} />
@@ -295,7 +308,7 @@ function ConditionTags({ listing }) {
   return (
     <div className="condition-panel">
       <div>
-        <span className="condition-title">??</span>
+        <span className="condition-title">{conditionMatchedLabel}</span>
         <div className="condition-tags">
           {matched.length ? (
             matched.map((condition) => (
@@ -304,12 +317,12 @@ function ConditionTags({ listing }) {
               </span>
             ))
           ) : (
-            <span className="condition-tag muted">????</span>
+            <span className="condition-tag muted">{conditionEmptyLabel}</span>
           )}
         </div>
       </div>
       <div>
-        <span className="condition-title">???</span>
+        <span className="condition-title">{conditionPendingLabel}</span>
         <div className="condition-tags">
           {missing.map((condition) => (
             <span className="condition-tag missing" key={condition}>
