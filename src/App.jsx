@@ -13,9 +13,28 @@ import { listings, updatedAt } from "./data/listings.js";
 import { applyFilters, formatDistrictSummary, getStats, sortListings } from "./listingUtils.js";
 import "./styles.css";
 
-const districts = [...new Set(listings.map((listing) => listing.district))].sort((a, b) =>
-  a.localeCompare(b, "zh-Hant"),
-);
+const taipeiDistricts = [
+  "中正區",
+  "大同區",
+  "中山區",
+  "松山區",
+  "大安區",
+  "萬華區",
+  "信義區",
+  "士林區",
+  "北投區",
+  "內湖區",
+  "南港區",
+  "文山區",
+];
+const newTaipeiTargetDistricts = ["板橋區", "三重區", "中和區", "永和區", "新店區", "土城區"];
+const districts = [
+  ...new Set([
+    ...taipeiDistricts,
+    ...newTaipeiTargetDistricts,
+    ...listings.map((listing) => listing.district),
+  ]),
+].sort((a, b) => a.localeCompare(b, "zh-Hant"));
 const sources = [...new Set(listings.map((listing) => listing.source))];
 
 function toggleValue(values, value) {

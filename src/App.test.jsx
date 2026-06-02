@@ -18,5 +18,8 @@ describe("App", () => {
 
     expect(rootElement.textContent).toContain("出租套房清單");
     expect(rootElement.querySelector("input")?.placeholder).toBe("搜尋標題、捷運、區域");
+    expect(rootElement.textContent).toContain("南港區");
+    expect(rootElement.textContent).toContain("文山區");
+    expect(rootElement.textContent).toContain("松山區");
   });
 });
