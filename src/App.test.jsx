@@ -7,19 +7,41 @@ import App from "./App.jsx";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+async function renderApp() {
+  const rootElement = document.createElement("div");
+  document.body.appendChild(rootElement);
+
+  await act(async () => {
+    createRoot(rootElement).render(<App />);
+  });
+
+  return rootElement;
+}
+
 describe("App", () => {
-  it("renders the interactive dashboard into the root element", async () => {
-    const rootElement = document.createElement("div");
-    document.body.appendChild(rootElement);
+  it("renders the flight hunter dashboard with verified deal data", async () => {
+    const rootElement = await renderApp();
+
+    expect(rootElement.textContent).toContain("機票獵人");
+    expect(rootElement.textContent).toContain("台北桃園 TPE");
+    expect(rootElement.textContent).toContain("來回含行李 ≤ NT$10,000");
+    expect(rootElement.textContent).toContain("釜山 PUS");
+    expect(rootElement.textContent).toContain("沖繩 OKA");
+  });
+
+  it("filters deals by airline", async () => {
+    const rootElement = await renderApp();
+    const peachButton = [...rootElement.querySelectorAll("button")].find(
+      (button) => button.textContent === "樂桃航空",
+    );
 
     await act(async () => {
-      createRoot(rootElement).render(<App />);
+      peachButton.click();
     });
 
-    expect(rootElement.textContent).toContain("出租套房清單");
-    expect(rootElement.querySelector("input")?.placeholder).toBe("搜尋標題、捷運、區域");
-    expect(rootElement.textContent).toContain("南港區");
-    expect(rootElement.textContent).toContain("文山區");
-    expect(rootElement.textContent).toContain("松山區");
+    const resultsText = rootElement.querySelector(".deal-board")?.textContent || "";
+    expect(resultsText).toContain("大阪 KIX");
+    expect(resultsText).toContain("東京 NRT/HND");
+    expect(resultsText).not.toContain("釜山 PUS");
   });
 });
