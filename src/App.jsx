@@ -171,6 +171,10 @@ const airlineLinks = [
   ["濟州航空", "https://www.jejuair.net"],
   ["真航空", "https://www.jinair.com"],
   ["德威航空", "https://www.twayair.com"],
+  ["釜山航空", "https://www.airbusan.com"],
+  ["捷星日本航空", "https://www.jetstar.com"],
+  ["泰國亞洲航空", "https://www.airasia.com"],
+  ["亞洲航空 X", "https://www.airasia.com"],
 ];
 
 function toTwd(priceEur) {
@@ -193,8 +197,43 @@ function unique(values) {
   return [...new Set(values)];
 }
 
-const airlines = unique(deals.map((deal) => deal.airline));
-const routes = unique(deals.map((deal) => deal.route));
+const monitoredAirlines = [
+  "台灣虎航",
+  "樂桃航空",
+  "酷航",
+  "濟州航空",
+  "真航空",
+  "德威航空",
+  "釜山航空",
+  "捷星日本航空",
+  "泰國亞洲航空",
+  "亞洲航空 X",
+];
+
+const monitoredRoutes = [
+  "釜山 PUS",
+  "首爾 ICN",
+  "沖繩 OKA",
+  "大阪 KIX",
+  "東京 NRT/HND",
+  "福岡 FUK",
+  "名古屋 NGO",
+  "札幌 CTS",
+  "仙台 SDJ",
+  "小松 KMQ",
+  "岡山 OKJ",
+  "高松 TAK",
+  "佐賀 HSG",
+  "宮崎 KMI",
+  "鹿兒島 KOJ",
+  "濟州 CJU",
+  "大邱 TAE",
+  "清州 CJJ",
+  "務安 MWX",
+];
+
+const airlines = unique([...monitoredAirlines, ...deals.map((deal) => deal.airline)]);
+const routes = unique([...monitoredRoutes, ...deals.map((deal) => deal.route)]);
 const allCountries = ["日本", "韓國"];
 
 export default function App() {
@@ -280,8 +319,8 @@ export default function App() {
       <section className="summary-grid" aria-label="票價統計">
         <Stat icon={<Flame size={18} />} label="最便宜候選" value={`${bestDeal.route} ${formatMoney(totalEstimate(bestDeal))}`} />
         <Stat icon={<ShieldCheck size={18} />} label="預算內筆數" value={`${underBudgetCount} 筆`} />
-        <Stat icon={<Briefcase size={18} />} label="行李規格" value="20kg 估算" />
-        <Stat icon={<Gauge size={18} />} label="匯率假設" value={`€1 = NT$${conversionRate}`} />
+        <Stat icon={<Briefcase size={18} />} label="監控航點" value={`${routes.length} 個`} />
+        <Stat icon={<Gauge size={18} />} label="監控航司" value={`${airlines.length} 家`} />
       </section>
 
       <div className="workspace">

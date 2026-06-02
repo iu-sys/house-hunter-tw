@@ -29,7 +29,20 @@ describe("App", () => {
     expect(rootElement.textContent).toContain("沖繩 OKA");
   });
 
-  it("filters deals by airline", async () => {
+  it("shows a broader monitoring pool than the currently verified deals", async () => {
+    const rootElement = await renderApp();
+
+    expect(rootElement.textContent).toContain("酷航");
+    expect(rootElement.textContent).toContain("濟州航空");
+    expect(rootElement.textContent).toContain("真航空");
+    expect(rootElement.textContent).toContain("德威航空");
+    expect(rootElement.textContent).toContain("福岡 FUK");
+    expect(rootElement.textContent).toContain("名古屋 NGO");
+    expect(rootElement.textContent).toContain("札幌 CTS");
+    expect(rootElement.textContent).toContain("濟州 CJU");
+  });
+
+  it("filters verified deals by airline while keeping the monitoring pool visible", async () => {
     const rootElement = await renderApp();
     const peachButton = [...rootElement.querySelectorAll("button")].find(
       (button) => button.textContent === "樂桃航空",
@@ -43,5 +56,6 @@ describe("App", () => {
     expect(resultsText).toContain("大阪 KIX");
     expect(resultsText).toContain("東京 NRT/HND");
     expect(resultsText).not.toContain("釜山 PUS");
+    expect(rootElement.textContent).toContain("德威航空");
   });
 });
