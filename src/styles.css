@@ -387,6 +387,38 @@ tbody tr:hover {
   color: #166534;
 }
 
+.compact-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+  max-width: 420px;
+}
+
+.compact-condition {
+  border-radius: 5px;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 4px 6px;
+}
+
+.compact-condition.matched {
+  background: #ecfeff;
+  color: #155e75;
+}
+
+.compact-condition.pending {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.compact-condition.muted {
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .condition-panel {
   display: grid;
   gap: 12px;

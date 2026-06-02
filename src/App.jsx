@@ -219,6 +219,7 @@ export default function App() {
                         {listing.isNew && <span className="new-dot">新</span>}
                         <span>{listing.title}</span>
                       </div>
+                      <CompactConditionTags listing={listing} />
                     </td>
                     <td>{listing.area || "-"}</td>
                     <td>{listing.metro || "-"}</td>
@@ -298,6 +299,30 @@ function ConditionScore({ listing }) {
     <span className={score >= 8 ? "condition-score strong" : "condition-score"}>
       {score}/11
     </span>
+  );
+}
+
+function CompactConditionTags({ listing }) {
+  const matched = listing.matchedConditions || [];
+  const missing = listing.missingConditions || [];
+  const visibleMatched = matched.slice(0, 4);
+
+  return (
+    <div className="compact-conditions">
+      {visibleMatched.map((condition) => (
+        <span className="compact-condition matched" key={condition}>
+          {condition}
+        </span>
+      ))}
+      {matched.length > visibleMatched.length && (
+        <span className="compact-condition muted">+{matched.length - visibleMatched.length}</span>
+      )}
+      {missing.length > 0 && (
+        <span className="compact-condition pending">
+          {conditionPendingLabel} {missing.length}
+        </span>
+      )}
+    </div>
   );
 }
 
