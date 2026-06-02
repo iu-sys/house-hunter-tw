@@ -36,6 +36,12 @@ export function applyFilters(listings, filters) {
 
 export function sortListings(listings, sortKey) {
   return [...listings].sort((a, b) => {
+    if (sortKey === "condition-fit") {
+      if ((a.conditionScore || 0) !== (b.conditionScore || 0)) {
+        return (b.conditionScore || 0) - (a.conditionScore || 0);
+      }
+      return a.price - b.price;
+    }
     if (sortKey === "price-desc") return b.price - a.price;
     if (sortKey === "district") return a.district.localeCompare(b.district, "zh-Hant");
     if (sortKey === "new-first") {

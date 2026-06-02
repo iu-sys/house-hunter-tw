@@ -47,7 +47,7 @@ export default function App() {
   const [selectedDistricts, setSelectedDistricts] = useState([]);
   const [selectedSources, setSelectedSources] = useState([]);
   const [onlyNew, setOnlyNew] = useState(false);
-  const [sortKey, setSortKey] = useState("new-first");
+  const [sortKey, setSortKey] = useState("condition-fit");
   const [refreshNote, setRefreshNote] = useState("");
 
   const stats = useMemo(() => getStats(listings), []);
@@ -179,6 +179,7 @@ export default function App() {
             <label className="sort-control">
               <ArrowDownUp size={16} />
               <select value={sortKey} onChange={(event) => setSortKey(event.target.value)}>
+                <option value="condition-fit">?????</option>
                 <option value="new-first">新上架優先</option>
                 <option value="price-asc">價格低到高</option>
                 <option value="price-desc">價格高到低</option>
@@ -217,6 +218,9 @@ export default function App() {
                       <span className={`source source-${listing.source.toLowerCase()}`}>
                         {listing.source}
                       </span>
+                    </td>
+                    <td>
+                      <ConditionScore listing={listing} />
                     </td>
                     <td>
                       <a className="open-link" href={listing.url} target="_blank" rel="noreferrer">
@@ -272,6 +276,49 @@ export default function App() {
         </aside>
       </div>
     </main>
+  );
+}
+
+function ConditionScore({ listing }) {
+  const score = listing.conditionScore || 0;
+  return (
+    <span className={score >= 8 ? "condition-score strong" : "condition-score"}>
+      {score}/11
+    </span>
+  );
+}
+
+function ConditionTags({ listing }) {
+  const matched = listing.matchedConditions || [];
+  const missing = listing.missingConditions || [];
+
+  return (
+    <div className="condition-panel">
+      <div>
+        <span className="condition-title">??</span>
+        <div className="condition-tags">
+          {matched.length ? (
+            matched.map((condition) => (
+              <span className="condition-tag matched" key={condition}>
+                {condition}
+              </span>
+            ))
+          ) : (
+            <span className="condition-tag muted">????</span>
+          )}
+        </div>
+      </div>
+      <div>
+        <span className="condition-title">???</span>
+        <div className="condition-tags">
+          {missing.map((condition) => (
+            <span className="condition-tag missing" key={condition}>
+              {condition}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
