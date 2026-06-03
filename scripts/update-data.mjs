@@ -1,5 +1,9 @@
 import fs from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { JSDOM } from "jsdom";
+
+const execFileAsync = promisify(execFile);
 
 const TARGET_DISTRICTS = [
   "中正區",
@@ -26,6 +30,10 @@ const REGIONS = [
   { id: 1, rows: [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300] },
   { id: 3, rows: [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300] },
 ];
+
+const PTT_BOARDS = ["Rent_tao", "Rent_apart"];
+const PTT_MAX_PAGES_PER_BOARD = 8;
+const PTT_RECENT_DAYS = 3;
 
 const BLOCKED_TEXT = [
   "限女性",
@@ -72,6 +80,24 @@ const userAgent =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
+const districtAliases = TARGET_DISTRICTS.flatMap((district) => [
+  { district, alias: district },
+  { district, alias: district.replace(/區$/, "") },
+]);
+
+function findTargetDistrict(text) {
+  return districtAliases.find(({ alias }) => alias && text.includes(alias))?.district || "";
+}
+
+function findPttDistrict(title, fullText) {
+  const bracketText = title.match(/^\[[^\]]+\]/)?.[0] || "";
+  return findTargetDistrict(`${bracketText} ${title}`) || findTargetDistrict(fullText);
+}
+
+function isPttFemaleOnlyTitle(title) {
+  return /^\[\s*女\s*\//.test(title);
+}
+
 function buildUrl(region, firstRow) {
   const params = new URLSearchParams({
     region: String(region),
@@ -85,35 +111,245 @@ function buildUrl(region, firstRow) {
 
 async function fetchListPage(region, firstRow) {
   const url = buildUrl(region, firstRow);
-  const response = await fetch(url, {
+  return fetchWithRetry(url, {
     headers: {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       Referer: "https://rent.591.com.tw/",
       "User-Agent": userAgent,
     },
   });
-
-  if (!response.ok) {
-    throw new Error(`591 list request failed: ${response.status} ${url}`);
-  }
-
-  return response.text();
 }
 
 async function fetchDetailPage(url) {
-  const response = await fetch(url, {
+  return fetchWithRetry(url, {
     headers: {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       Referer: "https://rent.591.com.tw/list?region=1&kind=2,3",
       "User-Agent": userAgent,
     },
   });
+}
 
-  if (!response.ok) {
-    throw new Error(`591 detail request failed: ${response.status} ${url}`);
+async function fetchWithRetry(url, options = {}, retries = 3) {
+  let lastError = null;
+  const headers = options.headers || {};
+
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    try {
+      const args = [
+        "-sS",
+        "-L",
+        "--fail",
+        "--compressed",
+        "--connect-timeout",
+        "15",
+        "--speed-limit",
+        "500",
+        "--speed-time",
+        "20",
+        "--max-time",
+        "45",
+      ];
+
+      for (const [name, value] of Object.entries(headers)) {
+        args.push("-H", `${name}: ${value}`);
+      }
+
+      args.push(url);
+
+      const { stdout } = await execFileAsync("curl", args, {
+        encoding: "utf8",
+        maxBuffer: 30 * 1024 * 1024,
+      });
+
+      return stdout;
+    } catch (error) {
+      if (
+        typeof error.stdout === "string" &&
+        error.stdout.includes("<html") &&
+        error.stdout.includes("data-id")
+      ) {
+        return error.stdout;
+      }
+
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 700 * (attempt + 1)));
+    }
   }
 
-  return response.text();
+  throw lastError;
+}
+
+async function fetchPttPage(board, page = "index") {
+  const url = `https://www.ptt.cc/bbs/${board}/${page}.html`;
+  return fetchWithRetry(url, {
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+      Cookie: "over18=1",
+      "User-Agent": userAgent,
+    },
+  });
+}
+
+function getPttPreviousPage(document) {
+  const previous = [...document.querySelectorAll("a.btn.wide")].find((link) =>
+    link.textContent.includes("上頁"),
+  );
+  const href = previous?.getAttribute("href") || "";
+  return href.match(/(index\d+)\.html/)?.[1] || "";
+}
+
+function getPttArticleDate(document, fallbackDateText) {
+  const metaValues = [...document.querySelectorAll(".article-meta-value")].map((node) =>
+    node.textContent.trim(),
+  );
+  const dateText = metaValues[3] || "";
+  const parsed = Date.parse(dateText);
+  if (!Number.isNaN(parsed)) return new Date(parsed);
+
+  const taipeiNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" }));
+  const fallbackMatch = fallbackDateText.match(/(\d{1,2})\/(\d{1,2})/);
+  if (!fallbackMatch) return taipeiNow;
+  const fallback = new Date(taipeiNow);
+  fallback.setMonth(Number(fallbackMatch[1]) - 1, Number(fallbackMatch[2]));
+  fallback.setHours(0, 0, 0, 0);
+  return fallback;
+}
+
+function cleanPttContent(document) {
+  const main = document.querySelector("#main-content");
+  if (!main) return "";
+
+  for (const node of [...main.querySelectorAll(".article-metaline, .article-metaline-right, .push")]) {
+    node.remove();
+  }
+
+  return main.textContent
+    .replace(/※ 發信站:.*$/gms, "")
+    .replace(/--\s*$/gms, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractPrice(text) {
+  const pricePatterns = [
+    /(?:租金|租屋費用|價格|月租|租金[:：]?)[^\d]{0,30}([\d,]{4,6})/i,
+    /([\d,]{4,6})\s*(?:元\/月|元\s*\/\s*月|元|\/月)/i,
+  ];
+
+  for (const pattern of pricePatterns) {
+    const match = text.match(pattern);
+    if (match) return Number(match[1].replace(/,/g, ""));
+  }
+
+  return 0;
+}
+
+function extractMetro(text) {
+  const metroMatch =
+    text.match(/(?:近|距|捷運站|捷運)\s*([^，,。；;\s]{1,12})(?:站|捷運)?/) ||
+    text.match(/([^，,。；;\s]{1,12})(?:捷運站|站)\s*(?:步行|走路|徒歩)?/);
+  return metroMatch?.[1] || "";
+}
+
+function parsePttListing({ board, title, url, dateText, document }) {
+  const content = cleanPttContent(document);
+  const fullText = `${title} ${content}`;
+  const district = findPttDistrict(title, fullText);
+  const price = extractPrice(fullText);
+  const area = fullText.match(/(\d+(?:\.\d+)?)\s*坪/)?.[0] || "";
+  const metro = extractMetro(fullText);
+  const articleDate = getPttArticleDate(document, dateText);
+  const matchedConditions = matchedRequiredConditions(fullText);
+  const missingConditions = missingRequiredConditions(fullText);
+
+  return {
+    source: "PTT",
+    board,
+    district,
+    price,
+    priceText: price ? `${price.toLocaleString("zh-TW")}元/月` : "",
+    title,
+    area,
+    metro,
+    url,
+    isNew: true,
+    text: fullText,
+    detailText: content,
+    fullText,
+    matchedConditions,
+    missingConditions,
+    isMaleAllowed:
+      !isPttFemaleOnlyTitle(title) &&
+      !FEMALE_ONLY_PATTERNS.some((pattern) => pattern.test(fullText)),
+    articleDate,
+  };
+}
+
+async function fetchPttListings() {
+  const taipeiNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" }));
+  const cutoff = new Date(taipeiNow);
+  cutoff.setDate(cutoff.getDate() - PTT_RECENT_DAYS);
+  const listings = [];
+
+  for (const board of PTT_BOARDS) {
+    let page = "index";
+
+    for (let pageCount = 0; page && pageCount < PTT_MAX_PAGES_PER_BOARD; pageCount += 1) {
+      const html = await fetchPttPage(board, page);
+      const document = new JSDOM(html).window.document;
+      const entries = [...document.querySelectorAll(".r-ent")]
+        .map((entry) => {
+          const link = entry.querySelector(".title a");
+          const title = link?.textContent.trim() || "";
+          const href = link?.getAttribute("href") || "";
+          return {
+            title,
+            url: href ? `https://www.ptt.cc${href}` : "",
+            dateText: entry.querySelector(".date")?.textContent.trim() || "",
+          };
+        })
+        .filter((entry) => entry.url && entry.title);
+
+      for (const entry of entries) {
+        if (entry.title.includes("[徵求]") || entry.title.includes("公告")) continue;
+        if (isPttFemaleOnlyTitle(entry.title)) continue;
+        if (BLOCKED_TEXT.some((blocked) => entry.title.includes(blocked))) continue;
+
+        let articleHtml = "";
+        try {
+          articleHtml = await fetchWithRetry(entry.url, {
+            headers: {
+              Accept: "text/html,application/xhtml+xml",
+              Cookie: "over18=1",
+              "User-Agent": userAgent,
+            },
+          });
+        } catch (error) {
+          console.warn(`Skipped PTT article ${entry.url}: ${error.message}`);
+          continue;
+        }
+
+        const articleDocument = new JSDOM(articleHtml).window.document;
+        const articleDate = getPttArticleDate(articleDocument, entry.dateText);
+        if (articleDate < cutoff) continue;
+
+        const listing = parsePttListing({
+          board,
+          title: entry.title,
+          url: entry.url,
+          dateText: entry.dateText,
+          document: articleDocument,
+        });
+
+        if (shouldKeep(listing) && listing.text.includes("套房")) listings.push(listing);
+      }
+
+      page = getPttPreviousPage(document);
+    }
+  }
+
+  return listings;
 }
 
 function isMetroWithinTenMinutes(text) {
@@ -162,7 +398,7 @@ function parseListing(item) {
   const price = Number(
     item.querySelector(".item-info-price strong")?.textContent.replace(/[^\d]/g, "") || 0,
   );
-  const district = TARGET_DISTRICTS.find((candidate) => text.includes(candidate)) || "";
+  const district = findTargetDistrict(text);
   const area = text.match(/(\d+(?:\.\d+)?)坪/)?.[0] || "";
   const metro = text.match(/距([^0-9\s]+)\d+\s*公尺/)?.[1] || "";
   const sourceUrl = link?.href || (id ? `https://rent.591.com.tw/${id}` : "");
@@ -204,6 +440,8 @@ function matchedRequiredConditions(text) {
 }
 
 async function enrichListing(listing) {
+  if (listing.source === "PTT") return listing;
+
   try {
     const html = await fetchDetailPage(listing.url);
     const document = new JSDOM(html).window.document;
@@ -299,15 +537,26 @@ export const listings = rawListings.map(([source, district, price, priceText, ti
 }
 
 const allListings = [];
+const listTargets = REGIONS.flatMap((region) =>
+  region.rows.map((firstRow) => ({ region: region.id, firstRow })),
+);
 
-for (const region of REGIONS) {
-  for (const firstRow of region.rows) {
-    const html = await fetchListPage(region.id, firstRow);
+const listPages = await mapWithConcurrency(listTargets, 4, async ({ region, firstRow }) => {
+  try {
+    const html = await fetchListPage(region, firstRow);
     const document = new JSDOM(html).window.document;
     const items = [...document.querySelectorAll(".item[data-id]")];
-    allListings.push(...items.map(parseListing));
+    return items.map(parseListing);
+  } catch (error) {
+    console.warn(`Skipped 591 list page region=${region} firstRow=${firstRow}: ${error.message}`);
+    return [];
   }
-}
+});
+
+allListings.push(...listPages.flat());
+
+const pttListings = await fetchPttListings();
+allListings.push(...pttListings);
 
 const uniqueListings = [...new Map(allListings.map((listing) => [listing.url, listing])).values()];
 const basicListings = uniqueListings.filter(shouldKeep);
@@ -333,7 +582,8 @@ const byDistrict = listings.reduce((counts, listing) => {
   return counts;
 }, {});
 
-console.log(`Updated ${listings.length} listings from 591.`);
+console.log(`Updated ${listings.length} listings from 591 and PTT.`);
+console.log(`PTT kept ${listings.filter((listing) => listing.source === "PTT").length} listings.`);
 console.log(
   Object.entries(byDistrict)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hant"))
