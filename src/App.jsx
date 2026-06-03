@@ -1,531 +1,399 @@
 import React, { useMemo, useState } from "react";
 import {
   ArrowDownUp,
-  BadgeCheck,
-  Briefcase,
-  CalendarDays,
+  Bell,
   ExternalLink,
-  Filter,
-  Flame,
-  Gauge,
-  Plane,
+  Home,
+  MapPin,
+  RefreshCw,
   Search,
-  ShieldCheck,
-  Ticket,
+  Sparkles,
 } from "lucide-react";
+import { listings, updatedAt } from "./data/listings.js";
+import { applyFilters, formatDistrictSummary, getStats, sortListings } from "./listingUtils.js";
 import "./styles.css";
 
-const conversionRate = 36.5;
-
-const deals = [
-  {
-    id: "pus-tiger-0609",
-    route: "釜山 PUS",
-    country: "韓國",
-    airline: "台灣虎航",
-    departDate: "2026-06-09",
-    returnDate: "2026-06-16",
-    priceEur: 140,
-    baggageEstimate: 2500,
-    baggagePlan: "tigersmart 含 20kg",
-    priority: "best",
-    flight: "16:40 TPE -> 19:55 PUS",
-    duration: "2 小時 15 分",
-    source: "Google Flights",
-    sourceUrl: "https://www.google.com/travel/flights",
-    officialUrl: "https://www.tigerairtw.com/zh-tw/booking/flight",
-    notes: "虎航直飛，裸票最低，含行李後仍有明顯預算空間。",
-  },
-  {
-    id: "sel-tiger-0715",
-    route: "首爾 ICN",
-    country: "韓國",
-    airline: "台灣虎航",
-    departDate: "2026-07-15",
-    returnDate: "2026-07-22",
-    priceEur: 145,
-    baggageEstimate: 2500,
-    baggagePlan: "tigersmart 含 20kg",
-    priority: "best",
-    flight: "20:00 TPE -> 23:30 ICN",
-    duration: "2 小時 30 分",
-    source: "Google Flights",
-    sourceUrl: "https://www.google.com/travel/flights",
-    officialUrl: "https://www.tigerairtw.com/zh-tw/booking/flight",
-    notes: "虎航優先候選，同日酷航與真航空也在低價帶。",
-  },
-  {
-    id: "oka-tiger-1025",
-    route: "沖繩 OKA",
-    country: "日本",
-    airline: "台灣虎航",
-    departDate: "2026-10-25",
-    returnDate: "2026-11-01",
-    priceEur: 144,
-    baggageEstimate: 2500,
-    baggagePlan: "tigersmart 含 20kg",
-    priority: "best",
-    flight: "18:20 TPE -> 20:40 OKA",
-    duration: "1 小時 20 分",
-    source: "Google Flights",
-    sourceUrl: "https://www.google.com/travel/flights",
-    officialUrl: "https://www.tigerairtw.com/zh-tw/booking/flight",
-    notes: "短程直飛，含行李後最穩的日本 1 萬內候選。",
-  },
-  {
-    id: "oka-peach-1025",
-    route: "沖繩 OKA",
-    country: "日本",
-    airline: "樂桃航空",
-    departDate: "2026-10-25",
-    returnDate: "2026-11-01",
-    priceEur: 173,
-    baggageEstimate: 1800,
-    baggagePlan: "加購 20kg 估算",
-    priority: "good",
-    flight: "15:20 TPE -> 17:50 OKA",
-    duration: "1 小時 30 分",
-    source: "Google Flights",
-    sourceUrl: "https://www.google.com/travel/flights",
-    officialUrl: "https://www.flypeach.com/en",
-    notes: "樂桃同日直飛，裸票略高但仍在可控範圍。",
-  },
-  {
-    id: "kix-peach-0916",
-    route: "大阪 KIX",
-    country: "日本",
-    airline: "樂桃航空",
-    departDate: "2026-09-16",
-    returnDate: "2026-09-23",
-    priceEur: 178,
-    baggageEstimate: 2000,
-    baggagePlan: "加購 20kg 估算",
-    priority: "good",
-    flight: "18:15 TPE -> 22:00 KIX",
-    duration: "2 小時 45 分",
-    source: "Google Flights",
-    sourceUrl: "https://www.google.com/travel/flights",
-    officialUrl: "https://www.flypeach.com/en",
-    notes: "大阪最低裸票，同日虎航約 EUR 212 起。",
-  },
-  {
-    id: "tyo-peach-1029",
-    route: "東京 NRT/HND",
-    country: "日本",
-    airline: "樂桃航空",
-    departDate: "2026-10-29",
-    returnDate: "2026-11-05",
-    priceEur: 201,
-    baggageEstimate: 2200,
-    baggagePlan: "加購 20kg 估算",
-    priority: "watch",
-    flight: "10:40 TPE -> 14:55 NRT",
-    duration: "3 小時 15 分",
-    source: "Google Flights",
-    sourceUrl: "https://www.google.com/travel/flights",
-    officialUrl: "https://www.flypeach.com/en",
-    notes: "東京線含行李後較接近上限，適合先鎖票再交叉查官網。",
-  },
-  {
-    id: "kix-tiger-0916",
-    route: "大阪 KIX",
-    country: "日本",
-    airline: "台灣虎航",
-    departDate: "2026-09-16",
-    returnDate: "2026-09-23",
-    priceEur: 212,
-    baggageEstimate: 2500,
-    baggagePlan: "tigersmart 含 20kg",
-    priority: "watch",
-    flight: "16:25 TPE -> 20:15 KIX",
-    duration: "2 小時 50 分",
-    source: "Google Flights",
-    sourceUrl: "https://www.google.com/travel/flights",
-    officialUrl: "https://www.tigerairtw.com/zh-tw/booking/flight",
-    notes: "虎航優先但較接近 NT$10,000，訂前需確認票種價差。",
-  },
-  {
-    id: "tyo-tiger-1029",
-    route: "東京 NRT/HND",
-    country: "日本",
-    airline: "台灣虎航",
-    departDate: "2026-10-29",
-    returnDate: "2026-11-05",
-    priceEur: 237,
-    baggageEstimate: 2500,
-    baggagePlan: "tigersmart 含 20kg",
-    priority: "risk",
-    flight: "15:35 TPE -> 19:35 NRT",
-    duration: "3 小時",
-    source: "Google Flights",
-    sourceUrl: "https://www.google.com/travel/flights",
-    officialUrl: "https://www.tigerairtw.com/zh-tw/booking/flight",
-    notes: "裸票好看，但含 20kg 後可能超過預算。",
-  },
+const taipeiDistricts = [
+  "中正區",
+  "大同區",
+  "中山區",
+  "松山區",
+  "大安區",
+  "萬華區",
+  "信義區",
+  "士林區",
+  "北投區",
+  "內湖區",
+  "南港區",
+  "文山區",
 ];
+const newTaipeiTargetDistricts = ["板橋區", "三重區", "中和區", "永和區", "新店區", "土城區"];
+const districts = [
+  ...new Set([
+    ...taipeiDistricts,
+    ...newTaipeiTargetDistricts,
+    ...listings.map((listing) => listing.district),
+  ]),
+].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+const sources = [...new Set(listings.map((listing) => listing.source))];
 
-const airlineLinks = [
-  ["台灣虎航", "https://www.tigerairtw.com/zh-tw/booking/flight"],
-  ["樂桃航空", "https://www.flypeach.com/en"],
-  ["酷航", "https://www.flyscoot.com"],
-  ["濟州航空", "https://www.jejuair.net"],
-  ["真航空", "https://www.jinair.com"],
-  ["德威航空", "https://www.twayair.com"],
-  ["釜山航空", "https://www.airbusan.com"],
-  ["捷星日本航空", "https://www.jetstar.com"],
-  ["泰國亞洲航空", "https://www.airasia.com"],
-  ["亞洲航空 X", "https://www.airasia.com"],
-];
+const conditionSortLabel = "\u689d\u4ef6\u7b26\u5408\u5ea6";
+const conditionColumnLabel = "\u689d\u4ef6";
+const conditionMatchLabel = "\u689d\u4ef6\u7b26\u5408";
+const conditionMatchedLabel = "\u7b26\u5408";
+const conditionPendingLabel = "\u5f85\u78ba\u8a8d";
+const conditionEmptyLabel = "\u5c1a\u672a\u547d\u4e2d";
 
-function toTwd(priceEur) {
-  return Math.round(priceEur * conversionRate);
+function toggleValue(values, value) {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
-
-function totalEstimate(deal) {
-  return toTwd(deal.priceEur) + deal.baggageEstimate;
-}
-
-function formatMoney(value) {
-  return `NT$${Math.round(value).toLocaleString("zh-TW")}`;
-}
-
-function formatDateRange(deal) {
-  return `${deal.departDate.replaceAll("-", "/")} - ${deal.returnDate.replaceAll("-", "/")}`;
-}
-
-function unique(values) {
-  return [...new Set(values)];
-}
-
-const monitoredAirlines = [
-  "台灣虎航",
-  "樂桃航空",
-  "酷航",
-  "濟州航空",
-  "真航空",
-  "德威航空",
-  "釜山航空",
-  "捷星日本航空",
-  "泰國亞洲航空",
-  "亞洲航空 X",
-];
-
-const monitoredRoutes = [
-  "釜山 PUS",
-  "首爾 ICN",
-  "沖繩 OKA",
-  "大阪 KIX",
-  "東京 NRT/HND",
-  "福岡 FUK",
-  "名古屋 NGO",
-  "札幌 CTS",
-  "仙台 SDJ",
-  "小松 KMQ",
-  "岡山 OKJ",
-  "高松 TAK",
-  "佐賀 HSG",
-  "宮崎 KMI",
-  "鹿兒島 KOJ",
-  "濟州 CJU",
-  "大邱 TAE",
-  "清州 CJJ",
-  "務安 MWX",
-];
-
-const airlines = unique([...monitoredAirlines, ...deals.map((deal) => deal.airline)]);
-const routes = unique([...monitoredRoutes, ...deals.map((deal) => deal.route)]);
-const allCountries = ["日本", "韓國"];
 
 export default function App() {
-  const [selectedAirline, setSelectedAirline] = useState("全部");
-  const [selectedRoute, setSelectedRoute] = useState("全部");
-  const [selectedCountry, setSelectedCountry] = useState("全部");
   const [query, setQuery] = useState("");
-  const [underBudgetOnly, setUnderBudgetOnly] = useState(true);
-  const [tigerFirst, setTigerFirst] = useState(true);
-  const [sortKey, setSortKey] = useState("score");
-  const [selectedDealId, setSelectedDealId] = useState(deals[0].id);
+  const [maxPrice, setMaxPrice] = useState(15000);
+  const [selectedDistricts, setSelectedDistricts] = useState([]);
+  const [selectedSources, setSelectedSources] = useState([]);
+  const [onlyNew, setOnlyNew] = useState(false);
+  const [sortKey, setSortKey] = useState("condition-fit");
+  const [selectedListingId, setSelectedListingId] = useState("");
+  const [refreshNote, setRefreshNote] = useState("");
 
-  const visibleDeals = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    const filtered = deals.filter((deal) => {
-      const matchesAirline = selectedAirline === "全部" || deal.airline === selectedAirline;
-      const matchesRoute = selectedRoute === "全部" || deal.route === selectedRoute;
-      const matchesCountry = selectedCountry === "全部" || deal.country === selectedCountry;
-      const matchesBudget = !underBudgetOnly || totalEstimate(deal) <= 10000;
-      const matchesQuery =
-        !normalizedQuery ||
-        `${deal.route} ${deal.airline} ${deal.notes}`.toLowerCase().includes(normalizedQuery);
-
-      return matchesAirline && matchesRoute && matchesCountry && matchesBudget && matchesQuery;
+  const stats = useMemo(() => getStats(listings), []);
+  const visibleListings = useMemo(() => {
+    const filtered = applyFilters(listings, {
+      districts: selectedDistricts,
+      maxPrice,
+      sources: selectedSources,
+      onlyNew,
+      query,
     });
+    return sortListings(filtered, sortKey);
+  }, [maxPrice, onlyNew, query, selectedDistricts, selectedSources, sortKey]);
 
-    return filtered.sort((a, b) => {
-      if (tigerFirst && a.airline !== b.airline) {
-        if (a.airline === "台灣虎航") return -1;
-        if (b.airline === "台灣虎航") return 1;
-      }
-
-      if (sortKey === "date") return a.departDate.localeCompare(b.departDate);
-      if (sortKey === "route") return a.route.localeCompare(b.route, "zh-Hant");
-      if (sortKey === "airline") return a.airline.localeCompare(b.airline, "zh-Hant");
-      return totalEstimate(a) - totalEstimate(b);
-    });
-  }, [query, selectedAirline, selectedCountry, selectedRoute, sortKey, tigerFirst, underBudgetOnly]);
-
-  const selectedDeal = visibleDeals.find((deal) => deal.id === selectedDealId) || visibleDeals[0];
-  const bestDeal = deals.reduce((best, deal) => (totalEstimate(deal) < totalEstimate(best) ? deal : best));
-  const underBudgetCount = deals.filter((deal) => totalEstimate(deal) <= 10000).length;
+  const selectedListing =
+    visibleListings.find((listing) => listing.id === selectedListingId) || visibleListings[0] || null;
+  const visibleStats = getStats(visibleListings);
 
   return (
     <main className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <Plane size={23} />
+          <span className="brand-mark">
+            <Home size={20} strokeWidth={2.4} />
           </span>
           <div>
-            <h1>機票獵人</h1>
-            <p>台北桃園 TPE 出發，日本/韓國促銷來回票雷達</p>
+            <h1>房子獵人</h1>
+            <p>雙北套房快篩表</p>
           </div>
         </div>
-        <div className="top-actions" aria-label="查詢條件">
-          <span>台北桃園 TPE</span>
-          <span>≤ NT$10,000</span>
-          <span>含行李</span>
-          <span>虎航優先</span>
+        <div className="top-actions">
+          <span className="updated">更新：{updatedAt}</span>
+          <button
+            className="icon-button"
+            title="每日更新資料"
+            onClick={() => setRefreshNote("每日更新已排程；目前顯示最近一次搜尋結果。")}
+          >
+            <RefreshCw size={17} />
+            更新資料
+          </button>
         </div>
       </header>
+      {refreshNote && <div className="notice">{refreshNote}</div>}
 
-      <section className="hero-panel" aria-label="搜尋摘要">
-        <div>
-          <h2>來回含行李 ≤ NT$10,000</h2>
-          <p>
-            依 2026-06-02 查到的 Google Flights 價格整理，裸票以 EUR 顯示並換算台幣，
-            行李費以 20kg 估算；實際結帳仍請回航空官網確認。
-          </p>
-        </div>
-        <div className="search-box">
-          <Search size={18} />
-          <input
-            aria-label="搜尋航點或航空公司"
-            placeholder="搜尋航點、航空公司、備註"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </div>
-      </section>
-
-      <section className="summary-grid" aria-label="票價統計">
-        <Stat icon={<Flame size={18} />} label="最便宜候選" value={`${bestDeal.route} ${formatMoney(totalEstimate(bestDeal))}`} />
-        <Stat icon={<ShieldCheck size={18} />} label="預算內筆數" value={`${underBudgetCount} 筆`} />
-        <Stat icon={<Briefcase size={18} />} label="監控航點" value={`${routes.length} 個`} />
-        <Stat icon={<Gauge size={18} />} label="監控航司" value={`${airlines.length} 家`} />
+      <section className="summary-band" aria-label="搜尋統計">
+        <Stat label="符合筆數" value={stats.total} />
+        <Stat label="目前顯示" value={visibleStats.total} />
+        <Stat label="新上架" value={stats.newCount} />
+        <Stat label="最低價" value={stats.lowest?.priceText || "-"} />
       </section>
 
       <div className="workspace">
-        <aside className="filters" aria-label="篩選條件">
-          <div className="section-title">
-            <Filter size={17} />
-            <span>篩選</span>
-          </div>
+        <aside className="filters" aria-label="搜尋條件">
+          <label className="search-box">
+            <Search size={17} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="搜尋標題、捷運、區域"
+            />
+          </label>
 
-          <FilterGroup label="航空公司">
-            {["全部", ...airlines].map((airline) => (
-              <button
-                className={selectedAirline === airline ? "chip active" : "chip"}
-                key={airline}
-                onClick={() => setSelectedAirline(airline)}
-              >
-                {airline}
-              </button>
-            ))}
-          </FilterGroup>
+          <section>
+            <div className="filter-head">
+              <span>月租上限</span>
+              <strong>{Number(maxPrice).toLocaleString("zh-TW")} 元</strong>
+            </div>
+            <input
+              className="slider"
+              type="range"
+              min="7000"
+              max="15000"
+              step="500"
+              value={maxPrice}
+              onChange={(event) => setMaxPrice(Number(event.target.value))}
+            />
+          </section>
 
-          <FilterGroup label="目的地">
-            <select value={selectedRoute} onChange={(event) => setSelectedRoute(event.target.value)}>
-              {["全部", ...routes].map((route) => (
-                <option key={route} value={route}>
-                  {route}
-                </option>
-              ))}
-            </select>
-          </FilterGroup>
-
-          <FilterGroup label="國家">
-            <div className="segmented">
-              {["全部", ...allCountries].map((country) => (
+          <section>
+            <div className="filter-head">
+              <span>區域</span>
+              <button onClick={() => setSelectedDistricts([])}>清除</button>
+            </div>
+            <div className="chip-grid">
+              {districts.map((district) => (
                 <button
-                  className={selectedCountry === country ? "active" : ""}
-                  key={country}
-                  onClick={() => setSelectedCountry(country)}
+                  className={selectedDistricts.includes(district) ? "chip active" : "chip"}
+                  key={district}
+                  onClick={() => setSelectedDistricts(toggleValue(selectedDistricts, district))}
                 >
-                  {country}
+                  {district}
                 </button>
               ))}
             </div>
-          </FilterGroup>
+          </section>
+
+          <section>
+            <div className="filter-head">
+              <span>來源</span>
+            </div>
+            <div className="segmented">
+              {sources.map((source) => (
+                <button
+                  className={selectedSources.includes(source) ? "active" : ""}
+                  key={source}
+                  onClick={() => setSelectedSources(toggleValue(selectedSources, source))}
+                >
+                  {source}
+                </button>
+              ))}
+            </div>
+          </section>
 
           <label className="toggle-row">
             <input
               type="checkbox"
-              checked={underBudgetOnly}
-              onChange={(event) => setUnderBudgetOnly(event.target.checked)}
+              checked={onlyNew}
+              onChange={(event) => setOnlyNew(event.target.checked)}
             />
-            只看估算含行李 ≤ NT$10,000
+            只看新上架
           </label>
+        </aside>
 
-          <label className="toggle-row">
-            <input
-              type="checkbox"
-              checked={tigerFirst}
-              onChange={(event) => setTigerFirst(event.target.checked)}
-            />
-            虎航優先排序
-          </label>
-
-          <FilterGroup label="排序">
+        <section className="results">
+          <div className="toolbar">
+            <div>
+              <h2>出租套房清單</h2>
+              <p>{formatDistrictSummary(visibleStats.byDistrict) || "沒有符合條件的物件"}</p>
+            </div>
             <label className="sort-control">
               <ArrowDownUp size={16} />
               <select value={sortKey} onChange={(event) => setSortKey(event.target.value)}>
-                <option value="score">含行李估算低到高</option>
-                <option value="date">出發日期</option>
-                <option value="route">航點</option>
-                <option value="airline">航空公司</option>
+                <option value="condition-fit">{conditionSortLabel}</option>
+                <option value="new-first">新上架優先</option>
+                <option value="price-asc">價格低到高</option>
+                <option value="price-desc">價格高到低</option>
+                <option value="district">區域排序</option>
               </select>
             </label>
-          </FilterGroup>
-        </aside>
-
-        <section className="results" aria-label="低價機票清單">
-          <div className="toolbar">
-            <div>
-              <h2>低價候選清單</h2>
-              <p>
-                顯示 {visibleDeals.length} 筆，依目前篩選條件排序。價格為查詢當下資訊，可能隨時變動。
-              </p>
-            </div>
           </div>
 
-          <div className="deal-board">
-            {visibleDeals.map((deal) => (
-              <button
-                className={selectedDeal?.id === deal.id ? "deal-row selected" : "deal-row"}
-                key={deal.id}
-                onClick={() => setSelectedDealId(deal.id)}
-              >
-                <span className={`status-dot status-${deal.priority}`} />
-                <span className="deal-main">
-                  <strong>{deal.route}</strong>
-                  <small>{deal.airline} · {deal.country} · {deal.duration}</small>
-                </span>
-                <span className="deal-date">
-                  <CalendarDays size={15} />
-                  {formatDateRange(deal)}
-                </span>
-                <span className="deal-price">
-                  <strong>{formatMoney(totalEstimate(deal))}</strong>
-                  <small>裸票 €{deal.priceEur} + 行李估</small>
-                </span>
-                <span className={totalEstimate(deal) <= 10000 ? "budget yes" : "budget no"}>
-                  {totalEstimate(deal) <= 10000 ? "預算內" : "壓線"}
-                </span>
-              </button>
-            ))}
-
-            {visibleDeals.length === 0 && (
-              <div className="empty-state">
-                <Ticket size={24} />
-                <h3>沒有符合的票</h3>
-                <p>放寬預算或清除航空公司篩選，再重新比較。</p>
-              </div>
-            )}
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>區域</th>
+                  <th>價格</th>
+                  <th>標題</th>
+                  <th>坪數</th>
+                  <th>捷運站</th>
+                  <th>來源</th>
+                  <th>{conditionColumnLabel}</th>
+                  <th>連結</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleListings.map((listing) => (
+                  <tr
+                    className={selectedListing?.id === listing.id ? "selected-row" : ""}
+                    key={listing.id}
+                    onClick={() => setSelectedListingId(listing.id)}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedListingId(listing.id);
+                      }
+                    }}
+                  >
+                    <td>{listing.district}</td>
+                    <td className="price">{listing.priceText}</td>
+                    <td>
+                      <div className="title-cell">
+                        {listing.isNew && <span className="new-dot">新</span>}
+                        <span>{listing.title}</span>
+                      </div>
+                      <CompactConditionTags listing={listing} />
+                    </td>
+                    <td>{listing.area || "-"}</td>
+                    <td>{listing.metro || "-"}</td>
+                    <td>
+                      <span className={`source source-${listing.source.toLowerCase()}`}>
+                        {listing.source}
+                      </span>
+                    </td>
+                    <td>
+                      <ConditionScore listing={listing} />
+                    </td>
+                    <td>
+                      <a
+                        className="open-link"
+                        href={listing.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <ExternalLink size={15} />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
-        <aside className="detail" aria-label="選中航班細節">
-          {selectedDeal ? (
+        <aside className="detail" aria-label="推薦物件">
+          {selectedListing ? (
             <>
-              <div className="detail-head">
-                <span className="detail-icon">
-                  <BadgeCheck size={20} />
-                </span>
-                <span>{selectedDeal.source}</span>
+              <div className="detail-icon">
+                <Sparkles size={20} />
               </div>
-              <h2>{selectedDeal.route}</h2>
-              <p>{selectedDeal.notes}</p>
-              <div className="detail-price">{formatMoney(totalEstimate(selectedDeal))}</div>
+              <p className="detail-label">目前排序首選</p>
+              <h3>{selectedListing.title}</h3>
+              <div className="detail-price">{selectedListing.priceText}</div>
               <dl>
                 <div>
-                  <dt>航空公司</dt>
-                  <dd>{selectedDeal.airline}</dd>
+                  <dt>區域</dt>
+                  <dd>{selectedListing.district}</dd>
                 </div>
                 <div>
-                  <dt>日期</dt>
-                  <dd>{formatDateRange(selectedDeal)}</dd>
+                  <dt>坪數</dt>
+                  <dd>{selectedListing.area || "-"}</dd>
                 </div>
                 <div>
-                  <dt>航班</dt>
-                  <dd>{selectedDeal.flight}</dd>
+                  <dt>捷運</dt>
+                  <dd>{selectedListing.metro || "-"}</dd>
                 </div>
                 <div>
-                  <dt>行李</dt>
-                  <dd>{selectedDeal.baggagePlan}</dd>
+                  <dt>來源</dt>
+                  <dd>{selectedListing.source}</dd>
                 </div>
-                <div>
-                  <dt>裸票</dt>
-                  <dd>€{selectedDeal.priceEur} 約 {formatMoney(toTwd(selectedDeal.priceEur))}</dd>
+                              <div>
+                  <dt>{conditionMatchLabel}</dt>
+                  <dd>
+                    {selectedListing.conditionScore || 0}/{getConditionTotal(selectedListing)}
+                  </dd>
                 </div>
               </dl>
-              <div className="detail-actions">
-                <a href={selectedDeal.sourceUrl} target="_blank" rel="noreferrer">
-                  Google Flights
-                  <ExternalLink size={15} />
-                </a>
-                <a href={selectedDeal.officialUrl} target="_blank" rel="noreferrer">
-                  航空官網
-                  <ExternalLink size={15} />
-                </a>
-              </div>
+              <ConditionTags listing={selectedListing} />
+              <a className="primary-link" href={selectedListing.url} target="_blank" rel="noreferrer">
+                打開物件
+                <ExternalLink size={16} />
+              </a>
             </>
           ) : (
             <div className="empty-state">
-              <Ticket size={24} />
-              <h3>選一筆票價</h3>
-              <p>點選清單中的航班後，這裡會顯示行李與訂票連結。</p>
+              <Bell size={22} />
+              <h3>沒有符合條件的房源</h3>
+              <p>放寬價格或取消部分區域篩選，再試一次。</p>
             </div>
           )}
-
-          <div className="manual-links">
-            <h3>手動複查官網</h3>
-            {airlineLinks.map(([label, url]) => (
-              <a href={url} key={label} target="_blank" rel="noreferrer">
-                {label}
-                <ExternalLink size={14} />
-              </a>
-            ))}
-          </div>
         </aside>
       </div>
     </main>
   );
 }
 
-function Stat({ icon, label, value }) {
+function ConditionScore({ listing }) {
+  const score = listing.conditionScore || 0;
   return (
-    <div className="stat">
-      <span className="stat-icon">{icon}</span>
-      <span>{label}</span>
-      <strong>{value}</strong>
+    <span className={score >= 8 ? "condition-score strong" : "condition-score"}>
+      {score}/{getConditionTotal(listing)}
+    </span>
+  );
+}
+
+function getConditionTotal(listing) {
+  const matched = listing.matchedConditions || [];
+  const missing = (listing.missingConditions || []).filter(
+    (condition) => condition !== "詳情頁讀取失敗",
+  );
+  return matched.length + missing.length;
+}
+
+function CompactConditionTags({ listing }) {
+  const matched = listing.matchedConditions || [];
+  const missing = listing.missingConditions || [];
+  const visibleMatched = matched.slice(0, 4);
+
+  return (
+    <div className="compact-conditions">
+      {visibleMatched.map((condition) => (
+        <span className="compact-condition matched" key={condition}>
+          {condition}
+        </span>
+      ))}
+      {matched.length > visibleMatched.length && (
+        <span className="compact-condition muted">+{matched.length - visibleMatched.length}</span>
+      )}
+      {missing.length > 0 && (
+        <span className="compact-condition pending">
+          {conditionPendingLabel} {missing.length}
+        </span>
+      )}
     </div>
   );
 }
 
-function FilterGroup({ label, children }) {
+function ConditionTags({ listing }) {
+  const matched = listing.matchedConditions || [];
+  const missing = listing.missingConditions || [];
+
   return (
-    <section className="filter-group">
-      <h3>{label}</h3>
-      {children}
-    </section>
+    <div className="condition-panel">
+      <div>
+        <span className="condition-title">{conditionMatchedLabel}</span>
+        <div className="condition-tags">
+          {matched.length ? (
+            matched.map((condition) => (
+              <span className="condition-tag matched" key={condition}>
+                {condition}
+              </span>
+            ))
+          ) : (
+            <span className="condition-tag muted">{conditionEmptyLabel}</span>
+          )}
+        </div>
+      </div>
+      <div>
+        <span className="condition-title">{conditionPendingLabel}</span>
+        <div className="condition-tags">
+          {missing.map((condition) => (
+            <span className="condition-tag missing" key={condition}>
+              {condition}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="stat">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
