@@ -47,11 +47,11 @@ const BLOCKED_TEXT = [
   "單人入住",
   "已出租",
   "雅房",
-  "車位",
-  "停車",
   "倉庫",
   "店面",
 ];
+
+const PTT_BLOCKED_TITLE_TEXT = [...BLOCKED_TEXT, "車位", "停車"];
 
 const FEMALE_ONLY_PATTERNS = [
   /限\s*女/,
@@ -336,7 +336,7 @@ async function fetchPttListings() {
       for (const entry of entries) {
         if (entry.title.includes("[徵求]") || entry.title.includes("公告")) continue;
         if (isPttFemaleOnlyTitle(entry.title)) continue;
-        if (BLOCKED_TEXT.some((blocked) => entry.title.includes(blocked))) continue;
+        if (PTT_BLOCKED_TITLE_TEXT.some((blocked) => entry.title.includes(blocked))) continue;
 
         let articleHtml = "";
         try {
@@ -385,7 +385,7 @@ function isMetroWithinTenMinutes(text) {
 }
 
 function hasExteriorWindow(text) {
-  if (/(?:無|沒|没有|沒有|非|不是).{0,3}對外窗|對外窗.{0,3}(?:無|否|沒有)|無窗|暗房/.test(text)) {
+  if (/(?:無|沒|没有|沒有|非|不是).{0,3}對外窗|對外窗\s*[:：]\s*(?:無|否|沒有)|無窗|暗房/.test(text)) {
     return false;
   }
 
