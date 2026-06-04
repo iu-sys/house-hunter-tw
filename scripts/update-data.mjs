@@ -80,18 +80,37 @@ const userAgent =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-const districtAliases = TARGET_DISTRICTS.flatMap((district) => [
-  { district, alias: district },
-  { district, alias: district.replace(/區$/, "") },
-]);
-
 function findTargetDistrict(text) {
-  return districtAliases.find(({ alias }) => alias && text.includes(alias))?.district || "";
+  return TARGET_DISTRICTS.find((district) => text.includes(district)) || "";
+}
+
+function findTargetDistrictBySegment(text) {
+  const segments = text
+    .split(/[\/\s,，、\[\]［］()（）-]+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  return (
+    TARGET_DISTRICTS.find((district) =>
+      segments.some(
+        (segment) =>
+          segment === district ||
+          segment === district.replace(/區$/, "") ||
+          segment === `台北${district}` ||
+          segment === `臺北${district}` ||
+          segment === `新北${district}`,
+      ),
+    ) || ""
+  );
 }
 
 function findPttDistrict(title, fullText) {
   const bracketText = title.match(/^\[[^\]]+\]/)?.[0] || "";
-  return findTargetDistrict(`${bracketText} ${title}`) || findTargetDistrict(fullText);
+  return (
+    findTargetDistrictBySegment(bracketText) ||
+    findTargetDistrict(title) ||
+    findTargetDistrict(fullText)
+  );
 }
 
 function isPttFemaleOnlyTitle(title) {
