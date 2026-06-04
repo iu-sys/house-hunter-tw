@@ -26,10 +26,12 @@ const TARGET_DISTRICTS = [
   "土城區",
 ];
 
-const REGIONS = [
-  { id: 1, rows: [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300] },
-  { id: 3, rows: [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300] },
-];
+const PAGE_SIZE = 30;
+const MAX_FIRST_ROW = 1500;
+const REGIONS = [1, 3].map((id) => ({
+  id,
+  rows: Array.from({ length: MAX_FIRST_ROW / PAGE_SIZE + 1 }, (_, index) => index * PAGE_SIZE),
+}));
 
 const PTT_BOARDS = ["Rent_tao", "Rent_apart"];
 const PTT_MAX_PAGES_PER_BOARD = 8;
@@ -65,7 +67,7 @@ const FEMALE_ONLY_PATTERNS = [
 ];
 
 const REQUIRED_CONDITIONS = [
-  { label: "對外窗", test: (text) => text.includes("對外窗") },
+  { label: "對外窗", test: (text) => hasExteriorWindow(text) },
   { label: "捷運10分內", test: (text) => isMetroWithinTenMinutes(text) },
   { label: "有網路", test: (text) => /網路|寬頻|Wi-?Fi|wifi/i.test(text) },
   { label: "衣櫃", test: (text) => /衣櫃|衣柜/.test(text) },
@@ -121,6 +123,7 @@ function buildUrl(region, firstRow) {
   const params = new URLSearchParams({
     region: String(region),
     kind: "2,3",
+    rentprice: "0,15000",
     order: "posttime",
     orderType: "desc",
     firstRow: String(firstRow),
@@ -381,9 +384,20 @@ function isMetroWithinTenMinutes(text) {
   );
 }
 
+function hasExteriorWindow(text) {
+  if (/(?:無|沒|没有|沒有|非|不是).{0,3}對外窗|對外窗.{0,3}(?:無|否|沒有)|無窗|暗房/.test(text)) {
+    return false;
+  }
+
+  return /對外窗|外窗/.test(text);
+}
+
 function hasAcceptableUtilityRate(text) {
   if (/台水台電|台電台水/.test(text)) return true;
   if (text.includes("台水") && text.includes("台電")) return true;
+  if (/台電.{0,8}(?:計費|計價|收費)|(?:計費|計價).{0,8}台電|獨立電表.{0,8}台電|依.{0,8}台電/.test(text)) {
+    return true;
+  }
 
   const utilityPatterns = [
     /電費.{0,12}([1-5](?:\.\d+)?)\s*元/,
