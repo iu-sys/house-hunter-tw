@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { applyCustomConditions, buildListingText, parseKeywords } from "./customConditions.js";
+import {
+  applyCustomConditions,
+  baseConditionLabels,
+  buildListingText,
+  parseKeywords,
+} from "./customConditions.js";
 
 const listing = {
   id: "home-1",
@@ -14,6 +19,20 @@ const listing = {
 };
 
 describe("custom conditions", () => {
+  it("exposes the default condition checklist in the expected order", () => {
+    expect(baseConditionLabels).toEqual([
+      "對外窗",
+      "捷運10分內",
+      "有網路",
+      "衣櫃",
+      "有租補",
+      "台水台電或電費5元內",
+      "711走路2分鐘內",
+      "冰箱",
+      "電視",
+    ]);
+  });
+
   it("parses comma and whitespace separated keywords", () => {
     expect(parseKeywords("可貓, 垃圾代收 獨洗")).toEqual(["可貓", "垃圾代收", "獨洗"]);
   });
@@ -35,6 +54,18 @@ describe("custom conditions", () => {
     expect(result[0].customMatchedConditions).toEqual(["要可貓", "不要頂加", "垃圾代收"]);
     expect(result[0].customConditionScore).toBe(3);
     expect(result[0].conditionScore).toBe(5);
+  });
+
+  it("only counts selected base conditions before appending custom condition matches", () => {
+    const result = applyCustomConditions(
+      [listing],
+      [{ id: "a", label: "垃圾代收", type: "include", mode: "bonus", value: "垃圾代收" }],
+      { activeBaseConditions: ["有網路", "有租補"] },
+    );
+
+    expect(result[0].matchedConditions).toEqual(["有網路", "垃圾代收"]);
+    expect(result[0].missingConditions).toEqual(["有租補"]);
+    expect(result[0].conditionScore).toBe(2);
   });
 
   it("removes listings that fail required custom rules", () => {

@@ -3,7 +3,20 @@ export const defaultCustomRule = {
   type: "include",
   mode: "bonus",
   value: "",
+  enabled: true,
 };
+
+export const baseConditionLabels = [
+  "對外窗",
+  "捷運10分內",
+  "有網路",
+  "衣櫃",
+  "有租補",
+  "台水台電或電費5元內",
+  "711走路2分鐘內",
+  "冰箱",
+  "電視",
+];
 
 export function parseKeywords(value) {
   return String(value || "")
@@ -41,26 +54,34 @@ export function normalizeCustomRules(rules) {
     .filter((rule) => rule.enabled && rule.label && parseKeywords(rule.value).length > 0);
 }
 
+export function normalizeBaseConditions(activeBaseConditions = baseConditionLabels) {
+  const activeLabels = Array.isArray(activeBaseConditions)
+    ? activeBaseConditions
+    : baseConditionLabels;
+  const knownLabels = new Set(baseConditionLabels);
+
+  return activeLabels.filter((label) => knownLabels.has(label));
+}
+
 function ruleMatchesText(rule, text) {
   const keywords = parseKeywords(rule.value).map((keyword) => keyword.toLocaleLowerCase("zh-Hant"));
   const hasKeyword = keywords.some((keyword) => text.includes(keyword));
   return rule.type === "exclude" ? !hasKeyword : hasKeyword;
 }
 
-export function applyCustomConditions(listings, rules) {
+export function applyCustomConditions(listings, rules, options = {}) {
+  const activeBaseSet = new Set(normalizeBaseConditions(options.activeBaseConditions));
   const normalizedRules = normalizeCustomRules(rules);
-  if (normalizedRules.length === 0) {
-    return listings.map((listing) => ({
-      ...listing,
-      customMatchedConditions: [],
-      customMissingConditions: [],
-      customConditionScore: 0,
-    }));
-  }
 
   return listings
     .map((listing) => {
       const text = buildListingText(listing);
+      const baseMatchedConditions = (listing.matchedConditions || []).filter((condition) =>
+        activeBaseSet.has(condition),
+      );
+      const baseMissingConditions = (listing.missingConditions || []).filter((condition) =>
+        activeBaseSet.has(condition),
+      );
       const customMatchedConditions = [];
       const customMissingConditions = [];
 
@@ -73,16 +94,14 @@ export function applyCustomConditions(listings, rules) {
         }
       }
 
-      const baseScore = listing.conditionScore ?? (listing.matchedConditions || []).length;
-
       return {
         ...listing,
-        matchedConditions: [...(listing.matchedConditions || []), ...customMatchedConditions],
-        missingConditions: [...(listing.missingConditions || []), ...customMissingConditions],
+        matchedConditions: [...baseMatchedConditions, ...customMatchedConditions],
+        missingConditions: [...baseMissingConditions, ...customMissingConditions],
         customMatchedConditions,
         customMissingConditions,
         customConditionScore: customMatchedConditions.length,
-        conditionScore: baseScore + customMatchedConditions.length,
+        conditionScore: baseMatchedConditions.length + customMatchedConditions.length,
       };
     })
     .filter((listing) =>

@@ -10,7 +10,11 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
-import { applyCustomConditions, defaultCustomRule } from "./customConditions.js";
+import {
+  applyCustomConditions,
+  baseConditionLabels,
+  defaultCustomRule,
+} from "./customConditions.js";
 import { listings, updatedAt } from "./data/listings.js";
 import { applyFilters, formatDistrictSummary, getStats, sortListings } from "./listingUtils.js";
 import "./styles.css";
@@ -46,6 +50,7 @@ const conditionMatchedLabel = "\u7b26\u5408";
 const conditionPendingLabel = "\u5f85\u78ba\u8a8d";
 const conditionEmptyLabel = "\u5c1a\u672a\u547d\u4e2d";
 const customRulesStorageKey = "house-hunter-custom-rules";
+const activeBaseConditionsStorageKey = "house-hunter-active-base-conditions";
 
 function toggleValue(values, value) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
@@ -69,6 +74,22 @@ function loadCustomRules() {
   }
 }
 
+function loadActiveBaseConditions() {
+  if (typeof window === "undefined") return baseConditionLabels;
+
+  try {
+    const saved = window.localStorage.getItem(activeBaseConditionsStorageKey);
+    if (!saved) return baseConditionLabels;
+
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed)
+      ? parsed.filter((condition) => baseConditionLabels.includes(condition))
+      : baseConditionLabels;
+  } catch {
+    return baseConditionLabels;
+  }
+}
+
 export default function App() {
   const [query, setQuery] = useState("");
   const [maxPrice, setMaxPrice] = useState(15000);
@@ -77,12 +98,20 @@ export default function App() {
   const [onlyNew, setOnlyNew] = useState(false);
   const [sortKey, setSortKey] = useState("condition-fit");
   const [selectedListingId, setSelectedListingId] = useState("");
+  const [activeBaseConditions, setActiveBaseConditions] = useState(loadActiveBaseConditions);
   const [customRules, setCustomRules] = useState(loadCustomRules);
   const [refreshNote, setRefreshNote] = useState("");
 
   useEffect(() => {
     window.localStorage.setItem(customRulesStorageKey, JSON.stringify(customRules));
   }, [customRules]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      activeBaseConditionsStorageKey,
+      JSON.stringify(activeBaseConditions),
+    );
+  }, [activeBaseConditions]);
 
   const stats = useMemo(() => getStats(listings), []);
   const visibleListings = useMemo(() => {
@@ -93,8 +122,20 @@ export default function App() {
       onlyNew,
       query,
     });
-    return sortListings(applyCustomConditions(filtered, customRules), sortKey);
-  }, [customRules, maxPrice, onlyNew, query, selectedDistricts, selectedSources, sortKey]);
+    return sortListings(
+      applyCustomConditions(filtered, customRules, { activeBaseConditions }),
+      sortKey,
+    );
+  }, [
+    activeBaseConditions,
+    customRules,
+    maxPrice,
+    onlyNew,
+    query,
+    selectedDistricts,
+    selectedSources,
+    sortKey,
+  ]);
 
   const selectedListing =
     visibleListings.find((listing) => listing.id === selectedListingId) || visibleListings[0] || null;
@@ -104,6 +145,10 @@ export default function App() {
     setCustomRules((rules) =>
       rules.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)),
     );
+  }
+
+  function toggleBaseCondition(condition) {
+    setActiveBaseConditions((conditions) => toggleValue(conditions, condition));
   }
 
   return (
@@ -213,6 +258,30 @@ export default function App() {
           <section className="custom-rules">
             <div className="filter-head">
               <span>我的條件</span>
+              <button onClick={() => setActiveBaseConditions(baseConditionLabels)}>重設9個</button>
+            </div>
+            <div className="condition-checklist">
+              {baseConditionLabels.map((condition) => (
+                <label
+                  className={
+                    activeBaseConditions.includes(condition)
+                      ? "condition-choice active"
+                      : "condition-choice"
+                  }
+                  key={condition}
+                >
+                  <input
+                    checked={activeBaseConditions.includes(condition)}
+                    onChange={() => toggleBaseCondition(condition)}
+                    type="checkbox"
+                  />
+                  <span>{condition}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="filter-head custom-rule-head">
+              <span>自訂條件</span>
               <button onClick={() => setCustomRules((rules) => [...rules, createCustomRule()])}>
                 <Plus size={14} />
                 新增
@@ -221,6 +290,16 @@ export default function App() {
             <div className="custom-rule-list">
               {customRules.map((rule) => (
                 <div className="custom-rule" key={rule.id}>
+                  <label className="rule-enabled">
+                    <input
+                      checked={rule.enabled !== false}
+                      onChange={(event) =>
+                        updateCustomRule(rule.id, { enabled: event.target.checked })
+                      }
+                      type="checkbox"
+                    />
+                    啟用
+                  </label>
                   <input
                     aria-label="條件名稱"
                     value={rule.label}
