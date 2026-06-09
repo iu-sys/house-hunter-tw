@@ -53,6 +53,8 @@ describe("App condition controls", () => {
   it("renders the 9 default condition choices and updates the detail tags when one is unchecked", () => {
     renderApp();
 
+    expect(document.body.textContent).toContain("Facebook");
+
     const choices = [...document.querySelectorAll(".condition-choice")];
     expect(choices).toHaveLength(9);
     expect(choices.every((choice) => choice.querySelector("input").checked)).toBe(true);

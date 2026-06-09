@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { JSDOM } from "jsdom";
+import { FACEBOOK_SOURCE, loadFacebookListings } from "./facebook-import.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -479,7 +480,7 @@ function matchedRequiredConditions(text) {
 }
 
 async function enrichListing(listing) {
-  if (listing.source === "PTT") return listing;
+  if (listing.source === "PTT" || listing.source === FACEBOOK_SOURCE) return listing;
 
   try {
     const html = await fetchDetailPage(listing.url);
@@ -597,6 +598,15 @@ allListings.push(...listPages.flat());
 const pttListings = await fetchPttListings();
 allListings.push(...pttListings);
 
+const facebookListings = await loadFacebookListings("data/facebook-listings.json", {
+  targetDistricts: TARGET_DISTRICTS,
+  blockedText: BLOCKED_TEXT,
+  femaleOnlyPatterns: FEMALE_ONLY_PATTERNS,
+  matchedRequiredConditions,
+  missingRequiredConditions,
+});
+allListings.push(...facebookListings);
+
 const uniqueListings = [...new Map(allListings.map((listing) => [listing.url, listing])).values()];
 const basicListings = uniqueListings.filter(shouldKeep);
 console.log(`Checking ${basicListings.length} candidate listings against detail conditions...`);
@@ -627,8 +637,11 @@ const byDistrict = listings.reduce((counts, listing) => {
   return counts;
 }, {});
 
-console.log(`Updated ${listings.length} listings from 591 and PTT.`);
+console.log(`Updated ${listings.length} listings from 591, PTT, and Facebook.`);
 console.log(`PTT kept ${listings.filter((listing) => listing.source === "PTT").length} listings.`);
+console.log(
+  `Facebook kept ${listings.filter((listing) => listing.source === FACEBOOK_SOURCE).length} listings.`,
+);
 console.log(
   Object.entries(byDistrict)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hant"))

@@ -41,7 +41,8 @@ const districts = [
     ...listings.map((listing) => listing.district),
   ]),
 ].sort((a, b) => a.localeCompare(b, "zh-Hant"));
-const sources = [...new Set(listings.map((listing) => listing.source))];
+const knownSources = ["591", "PTT", "Facebook"];
+const sources = [...new Set([...knownSources, ...listings.map((listing) => listing.source)])];
 
 const conditionSortLabel = "\u689d\u4ef6\u7b26\u5408\u5ea6";
 const conditionColumnLabel = "\u689d\u4ef6";

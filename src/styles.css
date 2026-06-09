@@ -496,6 +496,11 @@ tbody tr.selected-row {
   color: #a15c03;
 }
 
+.source-facebook {
+  background: #e8f0ff;
+  color: #1d4ed8;
+}
+
 .condition-score {
   align-items: center;
   background: #f1f5f9;
