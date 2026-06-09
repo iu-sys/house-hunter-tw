@@ -29,6 +29,14 @@ function changeInput(input, value) {
   });
 }
 
+function changeSelect(select, value) {
+  const valueSetter = Object.getOwnPropertyDescriptor(select.constructor.prototype, "value")?.set;
+  act(() => {
+    valueSetter?.call(select, value);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
 describe("App condition controls", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -71,5 +79,21 @@ describe("App condition controls", () => {
     changeInput(customRule.querySelector('input[aria-label="關鍵字"]'), "可貓");
 
     expect(localStorage.getItem("house-hunter-custom-rules")).toContain("可貓");
+  });
+
+  it("uses a custom condition name as an active required filter when keywords are blank", () => {
+    renderApp();
+
+    const addButton = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent.trim() === "新增",
+    );
+    click(addButton);
+
+    const customRule = document.querySelector(".custom-rule");
+    changeInput(customRule.querySelector('input[aria-label="條件名稱"]'), "可貓");
+    changeSelect(customRule.querySelector('select[aria-label="條件模式"]'), "required");
+
+    expect(document.querySelector(".detail").textContent).toContain("可貓");
+    expect(document.querySelector("tbody").textContent).toContain("可貓");
   });
 });

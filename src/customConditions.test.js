@@ -56,6 +56,16 @@ describe("custom conditions", () => {
     expect(result[0].conditionScore).toBe(5);
   });
 
+  it("uses the custom condition label as keywords when the keyword field is empty", () => {
+    const result = applyCustomConditions([listing], [
+      { id: "a", label: "可貓", type: "include", mode: "required", value: "" },
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].customMatchedConditions).toEqual(["可貓"]);
+    expect(result[0].conditionScore).toBe(3);
+  });
+
   it("only counts selected base conditions before appending custom condition matches", () => {
     const result = applyCustomConditions(
       [listing],

@@ -338,7 +338,7 @@ export default function App() {
                     aria-label="關鍵字"
                     value={rule.value}
                     onChange={(event) => updateCustomRule(rule.id, { value: event.target.value })}
-                    placeholder="關鍵字，以逗號分隔"
+                    placeholder="不填就用條件名稱"
                   />
                 </div>
               ))}

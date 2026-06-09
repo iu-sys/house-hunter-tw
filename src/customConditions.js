@@ -43,14 +43,19 @@ export function buildListingText(listing) {
 
 export function normalizeCustomRules(rules) {
   return (Array.isArray(rules) ? rules : [])
-    .map((rule, index) => ({
-      id: rule.id || `custom-${index}`,
-      label: String(rule.label || "").trim(),
-      type: rule.type === "exclude" ? "exclude" : "include",
-      mode: rule.mode === "required" ? "required" : "bonus",
-      value: String(rule.value || "").trim(),
-      enabled: rule.enabled !== false,
-    }))
+    .map((rule, index) => {
+      const label = String(rule.label || "").trim();
+      const value = String(rule.value || "").trim() || label;
+
+      return {
+        id: rule.id || `custom-${index}`,
+        label,
+        type: rule.type === "exclude" ? "exclude" : "include",
+        mode: rule.mode === "required" ? "required" : "bonus",
+        value,
+        enabled: rule.enabled !== false,
+      };
+    })
     .filter((rule) => rule.enabled && rule.label && parseKeywords(rule.value).length > 0);
 }
 
