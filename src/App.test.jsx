@@ -64,7 +64,7 @@ describe("App condition controls", () => {
     expect(document.querySelector(".detail").textContent).toContain("8/8");
   });
 
-  it("adds custom condition rows that are enabled by default and stored for reuse", () => {
+  it("adds custom conditions into the main condition checklist", () => {
     renderApp();
 
     const addButton = [...document.querySelectorAll("button")].find(
@@ -72,11 +72,15 @@ describe("App condition controls", () => {
     );
     click(addButton);
 
-    const customRule = document.querySelector(".custom-rule");
-    expect(customRule.querySelector(".rule-enabled input").checked).toBe(true);
+    const form = document.querySelector(".add-rule-form");
+    changeInput(form.querySelector('input[aria-label="新增條件名稱"]'), "可貓");
+    click(form.querySelector('button[aria-label="加入自訂條件"]'));
 
-    changeInput(customRule.querySelector('input[aria-label="條件名稱"]'), "可貓");
-    changeInput(customRule.querySelector('input[aria-label="關鍵字"]'), "可貓");
+    const choices = [...document.querySelectorAll(".condition-choice")];
+    expect(choices).toHaveLength(10);
+    expect(choices.at(-1).textContent).toContain("可貓");
+    expect(choices.at(-1).querySelector("input").checked).toBe(true);
+    expect(document.querySelector(".custom-rule")).toBeNull();
 
     expect(localStorage.getItem("house-hunter-custom-rules")).toContain("可貓");
   });
@@ -89,9 +93,10 @@ describe("App condition controls", () => {
     );
     click(addButton);
 
-    const customRule = document.querySelector(".custom-rule");
-    changeInput(customRule.querySelector('input[aria-label="條件名稱"]'), "可貓");
-    changeSelect(customRule.querySelector('select[aria-label="條件模式"]'), "required");
+    const form = document.querySelector(".add-rule-form");
+    changeInput(form.querySelector('input[aria-label="新增條件名稱"]'), "可貓");
+    changeSelect(form.querySelector('select[aria-label="新增條件模式"]'), "required");
+    click(form.querySelector('button[aria-label="加入自訂條件"]'));
 
     expect(document.querySelector(".detail").textContent).toContain("可貓");
     expect(document.querySelector("tbody").textContent).toContain("可貓");

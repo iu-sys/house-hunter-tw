@@ -59,7 +59,17 @@ function toggleValue(values, value) {
 function createCustomRule() {
   return {
     ...defaultCustomRule,
+    mode: "required",
     id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  };
+}
+
+function createDraftRule() {
+  return {
+    label: "",
+    type: "include",
+    mode: "required",
+    value: "",
   };
 }
 
@@ -100,6 +110,8 @@ export default function App() {
   const [selectedListingId, setSelectedListingId] = useState("");
   const [activeBaseConditions, setActiveBaseConditions] = useState(loadActiveBaseConditions);
   const [customRules, setCustomRules] = useState(loadCustomRules);
+  const [isAddingRule, setIsAddingRule] = useState(false);
+  const [draftRule, setDraftRule] = useState(createDraftRule);
   const [refreshNote, setRefreshNote] = useState("");
 
   useEffect(() => {
@@ -149,6 +161,23 @@ export default function App() {
 
   function toggleBaseCondition(condition) {
     setActiveBaseConditions((conditions) => toggleValue(conditions, condition));
+  }
+
+  function addDraftRule() {
+    const label = draftRule.label.trim();
+    if (!label) return;
+
+    setCustomRules((rules) => [
+      ...rules,
+      {
+        ...createCustomRule(),
+        ...draftRule,
+        label,
+        value: draftRule.value.trim(),
+      },
+    ]);
+    setDraftRule(createDraftRule());
+    setIsAddingRule(false);
   }
 
   return (
@@ -278,72 +307,100 @@ export default function App() {
                   <span>{condition}</span>
                 </label>
               ))}
-            </div>
-
-            <div className="filter-head custom-rule-head">
-              <span>自訂條件</span>
-              <button onClick={() => setCustomRules((rules) => [...rules, createCustomRule()])}>
-                <Plus size={14} />
-                新增
-              </button>
-            </div>
-            <div className="custom-rule-list">
-              {customRules.map((rule) => (
-                <div className="custom-rule" key={rule.id}>
-                  <label className="rule-enabled">
-                    <input
-                      checked={rule.enabled !== false}
-                      onChange={(event) =>
-                        updateCustomRule(rule.id, { enabled: event.target.checked })
-                      }
-                      type="checkbox"
-                    />
-                    啟用
-                  </label>
-                  <input
-                    aria-label="條件名稱"
-                    value={rule.label}
-                    onChange={(event) => updateCustomRule(rule.id, { label: event.target.value })}
-                    placeholder="條件名稱"
-                  />
-                  <div className="rule-controls">
-                    <select
-                      aria-label="條件類型"
-                      value={rule.type}
-                      onChange={(event) => updateCustomRule(rule.id, { type: event.target.value })}
-                    >
-                      <option value="include">包含</option>
-                      <option value="exclude">排除</option>
-                    </select>
-                    <select
-                      aria-label="條件模式"
-                      value={rule.mode}
-                      onChange={(event) => updateCustomRule(rule.id, { mode: event.target.value })}
-                    >
-                      <option value="bonus">加分</option>
-                      <option value="required">必要</option>
-                    </select>
+              {customRules
+                .filter((rule) => rule.label.trim())
+                .map((rule) => (
+                  <span
+                    className={
+                      rule.enabled !== false
+                        ? "condition-choice custom-condition active"
+                        : "condition-choice custom-condition"
+                    }
+                    key={rule.id}
+                  >
+                    <label>
+                      <input
+                        checked={rule.enabled !== false}
+                        onChange={(event) =>
+                          updateCustomRule(rule.id, { enabled: event.target.checked })
+                        }
+                        type="checkbox"
+                      />
+                      <span>{rule.label}</span>
+                    </label>
                     <button
-                      aria-label="刪除條件"
-                      className="rule-delete"
+                      aria-label={`刪除${rule.label}`}
+                      className="inline-delete"
                       title="刪除條件"
                       onClick={() =>
                         setCustomRules((rules) => rules.filter((item) => item.id !== rule.id))
                       }
                     >
-                      <Trash2 size={15} />
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                ))}
+            </div>
+
+            <div className="filter-head custom-rule-head">
+              <span>自訂條件</span>
+              <button onClick={() => setIsAddingRule((isAdding) => !isAdding)}>
+                <Plus size={14} />
+                新增
+              </button>
+            </div>
+            {isAddingRule && (
+              <div className="add-rule-form">
+                  <input
+                    aria-label="新增條件名稱"
+                    value={draftRule.label}
+                    onChange={(event) =>
+                      setDraftRule((rule) => ({ ...rule, label: event.target.value }))
+                    }
+                    placeholder="例如：可貓"
+                  />
+                  <div className="add-rule-controls">
+                    <select
+                      aria-label="新增條件類型"
+                      value={draftRule.type}
+                      onChange={(event) =>
+                        setDraftRule((rule) => ({ ...rule, type: event.target.value }))
+                      }
+                    >
+                      <option value="include">包含</option>
+                      <option value="exclude">排除</option>
+                    </select>
+                    <select
+                      aria-label="新增條件模式"
+                      value={draftRule.mode}
+                      onChange={(event) =>
+                        setDraftRule((rule) => ({ ...rule, mode: event.target.value }))
+                      }
+                    >
+                      <option value="bonus">加分</option>
+                      <option value="required">必要</option>
+                    </select>
+                    <button
+                      aria-label="加入自訂條件"
+                      className="add-rule-button"
+                      onClick={addDraftRule}
+                    >
+                      加入
                     </button>
                   </div>
                   <input
-                    aria-label="關鍵字"
-                    value={rule.value}
-                    onChange={(event) => updateCustomRule(rule.id, { value: event.target.value })}
+                    aria-label="新增條件關鍵字"
+                    value={draftRule.value}
+                    onChange={(event) =>
+                      setDraftRule((rule) => ({ ...rule, value: event.target.value }))
+                    }
                     placeholder="不填就用條件名稱"
                   />
-                </div>
-              ))}
-              {customRules.length === 0 && <p className="custom-empty">尚未加入自訂條件</p>}
-            </div>
+              </div>
+            )}
+            {customRules.filter((rule) => rule.label.trim()).length === 0 && !isAddingRule && (
+              <p className="custom-empty">尚未加入自訂條件</p>
+            )}
           </section>
         </aside>
 
