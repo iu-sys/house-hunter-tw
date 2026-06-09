@@ -1,14 +1,16 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownUp,
   Bell,
   ExternalLink,
   Home,
-  MapPin,
+  Plus,
   RefreshCw,
   Search,
   Sparkles,
+  Trash2,
 } from "lucide-react";
+import { applyCustomConditions, defaultCustomRule } from "./customConditions.js";
 import { listings, updatedAt } from "./data/listings.js";
 import { applyFilters, formatDistrictSummary, getStats, sortListings } from "./listingUtils.js";
 import "./styles.css";
@@ -43,9 +45,28 @@ const conditionMatchLabel = "\u689d\u4ef6\u7b26\u5408";
 const conditionMatchedLabel = "\u7b26\u5408";
 const conditionPendingLabel = "\u5f85\u78ba\u8a8d";
 const conditionEmptyLabel = "\u5c1a\u672a\u547d\u4e2d";
+const customRulesStorageKey = "house-hunter-custom-rules";
 
 function toggleValue(values, value) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function createCustomRule() {
+  return {
+    ...defaultCustomRule,
+    id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  };
+}
+
+function loadCustomRules() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const saved = window.localStorage.getItem(customRulesStorageKey);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
 }
 
 export default function App() {
@@ -56,7 +77,12 @@ export default function App() {
   const [onlyNew, setOnlyNew] = useState(false);
   const [sortKey, setSortKey] = useState("condition-fit");
   const [selectedListingId, setSelectedListingId] = useState("");
+  const [customRules, setCustomRules] = useState(loadCustomRules);
   const [refreshNote, setRefreshNote] = useState("");
+
+  useEffect(() => {
+    window.localStorage.setItem(customRulesStorageKey, JSON.stringify(customRules));
+  }, [customRules]);
 
   const stats = useMemo(() => getStats(listings), []);
   const visibleListings = useMemo(() => {
@@ -67,12 +93,18 @@ export default function App() {
       onlyNew,
       query,
     });
-    return sortListings(filtered, sortKey);
-  }, [maxPrice, onlyNew, query, selectedDistricts, selectedSources, sortKey]);
+    return sortListings(applyCustomConditions(filtered, customRules), sortKey);
+  }, [customRules, maxPrice, onlyNew, query, selectedDistricts, selectedSources, sortKey]);
 
   const selectedListing =
     visibleListings.find((listing) => listing.id === selectedListingId) || visibleListings[0] || null;
   const visibleStats = getStats(visibleListings);
+
+  function updateCustomRule(id, patch) {
+    setCustomRules((rules) =>
+      rules.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)),
+    );
+  }
 
   return (
     <main className="app-shell">
@@ -177,6 +209,63 @@ export default function App() {
             />
             只看新上架
           </label>
+
+          <section className="custom-rules">
+            <div className="filter-head">
+              <span>我的條件</span>
+              <button onClick={() => setCustomRules((rules) => [...rules, createCustomRule()])}>
+                <Plus size={14} />
+                新增
+              </button>
+            </div>
+            <div className="custom-rule-list">
+              {customRules.map((rule) => (
+                <div className="custom-rule" key={rule.id}>
+                  <input
+                    aria-label="條件名稱"
+                    value={rule.label}
+                    onChange={(event) => updateCustomRule(rule.id, { label: event.target.value })}
+                    placeholder="條件名稱"
+                  />
+                  <div className="rule-controls">
+                    <select
+                      aria-label="條件類型"
+                      value={rule.type}
+                      onChange={(event) => updateCustomRule(rule.id, { type: event.target.value })}
+                    >
+                      <option value="include">包含</option>
+                      <option value="exclude">排除</option>
+                    </select>
+                    <select
+                      aria-label="條件模式"
+                      value={rule.mode}
+                      onChange={(event) => updateCustomRule(rule.id, { mode: event.target.value })}
+                    >
+                      <option value="bonus">加分</option>
+                      <option value="required">必要</option>
+                    </select>
+                    <button
+                      aria-label="刪除條件"
+                      className="rule-delete"
+                      title="刪除條件"
+                      onClick={() =>
+                        setCustomRules((rules) => rules.filter((item) => item.id !== rule.id))
+                      }
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                  <input
+                    aria-label="關鍵字"
+                    value={rule.value}
+                    onChange={(event) => updateCustomRule(rule.id, { value: event.target.value })}
+                    placeholder="關鍵字，以逗號分隔"
+                  />
+                </div>
+              ))}
+              {customRules.length === 0 && <p className="custom-empty">尚未加入自訂條件</p>}
+            </div>
+          </section>
         </aside>
 
         <section className="results">
