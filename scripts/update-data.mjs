@@ -36,6 +36,7 @@ const REGIONS = [1, 3].map((id) => ({
 const PTT_BOARDS = ["Rent_tao", "Rent_apart"];
 const PTT_MAX_PAGES_PER_BOARD = 8;
 const PTT_RECENT_DAYS = 3;
+const MIN_SAFE_LISTING_COUNT = 500;
 
 const BLOCKED_TEXT = [
   "限女性",
@@ -49,6 +50,11 @@ const BLOCKED_TEXT = [
   "雅房",
   "倉庫",
   "店面",
+  "公司登記",
+  "工商登記",
+  "戶籍登記",
+  "入戶口",
+  "代收信件",
 ];
 
 const PTT_BLOCKED_TITLE_TEXT = [...BLOCKED_TEXT, "車位", "停車"];
@@ -607,6 +613,12 @@ const listings = enrichedListings
     return a.price - b.price;
   })
   .map(({ text, detailText, fullText, detailError, isMaleAllowed, ...listing }) => listing);
+
+if (listings.length < MIN_SAFE_LISTING_COUNT) {
+  throw new Error(
+    `Refusing to write only ${listings.length} listings; expected at least ${MIN_SAFE_LISTING_COUNT}.`,
+  );
+}
 
 await fs.writeFile("src/data/listings.js", serializeListings(listings), "utf8");
 
