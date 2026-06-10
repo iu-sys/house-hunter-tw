@@ -16,6 +16,7 @@ import {
   defaultCustomRule,
 } from "./customConditions.js";
 import { listings, updatedAt } from "./data/listings.js";
+import { facebookRentalGroups } from "./facebookGroups.js";
 import { applyFilters, formatDistrictSummary, getStats, sortListings } from "./listingUtils.js";
 import "./styles.css";
 
@@ -266,12 +267,31 @@ export default function App() {
             <div className="segmented">
               {sources.map((source) => (
                 <button
-                  className={selectedSources.includes(source) ? "active" : ""}
+                  className={[
+                    selectedSources.includes(source) ? "active" : "",
+                    source === "Facebook" ? "facebook-source" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   key={source}
                   onClick={() => setSelectedSources(toggleValue(selectedSources, source))}
                 >
                   {source}
                 </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="facebook-groups">
+            <div className="filter-head">
+              <span>臉書社團</span>
+            </div>
+            <div className="facebook-group-list">
+              {facebookRentalGroups.map((group) => (
+                <a href={group.url} key={group.url} rel="noreferrer" target="_blank">
+                  <span>{group.name}</span>
+                  <ExternalLink size={13} />
+                </a>
               ))}
             </div>
           </section>

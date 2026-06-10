@@ -3,6 +3,7 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import App from "./App.jsx";
+import { facebookRentalGroups } from "./facebookGroups.js";
 
 let root;
 
@@ -54,6 +55,11 @@ describe("App condition controls", () => {
     renderApp();
 
     expect(document.body.textContent).toContain("Facebook");
+    expect(document.querySelector(".facebook-source")?.textContent).toBe("Facebook");
+    expect(document.querySelectorAll(".facebook-group-list a")).toHaveLength(
+      facebookRentalGroups.length,
+    );
+    expect(document.body.textContent).toContain("台北租屋、出租專屬");
 
     const choices = [...document.querySelectorAll(".condition-choice")];
     expect(choices).toHaveLength(9);
