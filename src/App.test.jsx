@@ -110,17 +110,15 @@ describe("App condition controls", () => {
     expect(document.querySelector("tbody").textContent).toContain("可貓");
   });
 
-  it("shows Facebook group search results when Facebook is selected but no imported listings exist", () => {
+  it("shows imported Facebook listings in the standard result table", () => {
     renderApp();
 
     const facebookButton = document.querySelector(".facebook-source");
     click(facebookButton);
 
-    expect(document.querySelector(".facebook-search-results")).not.toBeNull();
-    expect(document.querySelectorAll(".facebook-result-card")).toHaveLength(
-      facebookRentalGroups.length,
-    );
-    expect(document.querySelector(".results").textContent).toContain("臉書社團搜尋入口");
-    expect(document.querySelector(".detail").textContent).toContain("先打開左側或清單中的臉書社團");
+    expect(document.querySelector(".facebook-search-results")).toBeNull();
+    expect(document.querySelector("tbody").textContent).toContain("Facebook");
+    expect(document.querySelector("tbody").textContent).toContain("永和福和路精緻套房");
+    expect(document.querySelector(".detail").textContent).toContain("Facebook");
   });
 });
