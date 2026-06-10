@@ -109,4 +109,18 @@ describe("App condition controls", () => {
     expect(document.querySelector(".detail").textContent).toContain("可貓");
     expect(document.querySelector("tbody").textContent).toContain("可貓");
   });
+
+  it("shows Facebook group search results when Facebook is selected but no imported listings exist", () => {
+    renderApp();
+
+    const facebookButton = document.querySelector(".facebook-source");
+    click(facebookButton);
+
+    expect(document.querySelector(".facebook-search-results")).not.toBeNull();
+    expect(document.querySelectorAll(".facebook-result-card")).toHaveLength(
+      facebookRentalGroups.length,
+    );
+    expect(document.querySelector(".results").textContent).toContain("臉書社團搜尋入口");
+    expect(document.querySelector(".detail").textContent).toContain("先打開左側或清單中的臉書社團");
+  });
 });

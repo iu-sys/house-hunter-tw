@@ -446,6 +446,43 @@ h2 {
   max-height: calc(100vh - 210px);
 }
 
+.facebook-search-results {
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+
+.facebook-result-card {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe5f4;
+  border-radius: 8px;
+  color: #1b2630;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 82px;
+  padding: 13px 14px;
+  text-decoration: none;
+}
+
+.facebook-result-card:hover {
+  background: #f8fbff;
+  border-color: #9db9fa;
+}
+
+.facebook-result-card h3 {
+  font-size: 16px;
+  line-height: 1.35;
+  margin: 7px 0 3px;
+}
+
+.facebook-result-card p {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 table {
   border-collapse: collapse;
   min-width: 860px;
