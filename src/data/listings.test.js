@@ -39,7 +39,7 @@ describe("generated listing data", () => {
   it("includes imported Facebook listings as standard listing rows", () => {
     const facebookListings = listings.filter((listing) => listing.source === "Facebook");
 
-    expect(facebookListings.length).toBeGreaterThanOrEqual(10);
+    expect(facebookListings.length).toBeGreaterThanOrEqual(25);
     expect(facebookListings.every((listing) => listing.price && listing.price <= 15000)).toBe(true);
     expect(facebookListings.every((listing) => targetDistricts.has(listing.district))).toBe(true);
     expect(facebookListings.some((listing) => listing.title.includes("近中和捷運"))).toBe(true);
