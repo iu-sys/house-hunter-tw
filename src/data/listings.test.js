@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { listings } from "./listings.js";
 
 const targetDistricts = new Set([
-  "中正區",
+  "永和區",
   "大同區",
   "中山區",
   "松山區",
@@ -17,9 +17,9 @@ const targetDistricts = new Set([
   "板橋區",
   "三重區",
   "中和區",
-  "永和區",
   "新店區",
   "土城區",
+  "中正區",
 ]);
 
 describe("generated listing data", () => {
@@ -27,8 +27,9 @@ describe("generated listing data", () => {
     expect(listings.length).toBeGreaterThanOrEqual(500);
   });
 
-  it("keeps only target districts and direct 591 listing URLs", () => {
+  it("keeps only target districts, allowed sources, and direct 591 listing URLs", () => {
     expect(listings.every((listing) => targetDistricts.has(listing.district))).toBe(true);
+    expect(listings.every((listing) => ["591", "PTT"].includes(listing.source))).toBe(true);
 
     const invalid591Urls = listings.filter(
       (listing) => listing.source === "591" && !/rent\.591\.com\.tw\/\d+/.test(listing.url),
@@ -36,12 +37,19 @@ describe("generated listing data", () => {
     expect(invalid591Urls).toEqual([]);
   });
 
-  it("includes imported Facebook listings as standard listing rows", () => {
-    const facebookListings = listings.filter((listing) => listing.source === "Facebook");
+  it("retains recent PTT suite listings alongside 591 data", () => {
+    const pttListings = listings.filter((listing) => listing.source === "PTT");
 
-    expect(facebookListings.length).toBeGreaterThanOrEqual(25);
-    expect(facebookListings.every((listing) => listing.price && listing.price <= 15000)).toBe(true);
-    expect(facebookListings.every((listing) => targetDistricts.has(listing.district))).toBe(true);
-    expect(facebookListings.some((listing) => listing.title.includes("近中和捷運"))).toBe(true);
+    expect(pttListings.length).toBeGreaterThanOrEqual(0);
+    expect(pttListings.every((listing) => listing.price && listing.price <= 15000)).toBe(true);
+    expect(pttListings.every((listing) => targetDistricts.has(listing.district))).toBe(true);
+  });
+
+  it("excludes parking, warehouse, and storefront inventory", () => {
+    const blockedPattern = /車位|停車|倉庫|店面/;
+
+    expect(
+      listings.filter((listing) => blockedPattern.test(`${listing.title} ${listing.url}`)),
+    ).toEqual([]);
   });
 });

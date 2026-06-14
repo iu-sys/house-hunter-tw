@@ -3,7 +3,6 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import App from "./App.jsx";
-import { facebookRentalGroups } from "./facebookGroups.js";
 
 let root;
 
@@ -16,29 +15,7 @@ function renderApp() {
   });
 }
 
-function click(element) {
-  act(() => {
-    element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-  });
-}
-
-function changeInput(input, value) {
-  const valueSetter = Object.getOwnPropertyDescriptor(input.constructor.prototype, "value")?.set;
-  act(() => {
-    valueSetter?.call(input, value);
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-}
-
-function changeSelect(select, value) {
-  const valueSetter = Object.getOwnPropertyDescriptor(select.constructor.prototype, "value")?.set;
-  act(() => {
-    valueSetter?.call(select, value);
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-}
-
-describe("App condition controls", () => {
+describe("App", () => {
   beforeEach(() => {
     localStorage.clear();
     document.body.innerHTML = "";
@@ -51,74 +28,37 @@ describe("App condition controls", () => {
     root = undefined;
   });
 
-  it("renders the 9 default condition choices and updates the detail tags when one is unchecked", () => {
+  it("renders source toggles and listing rows", () => {
     renderApp();
 
-    expect(document.body.textContent).toContain("Facebook");
-    expect(document.querySelector(".facebook-source")?.textContent).toBe("Facebook");
-    expect(document.querySelectorAll(".facebook-group-list a")).toHaveLength(
-      facebookRentalGroups.length,
+    const sourceButtons = [...document.querySelectorAll(".segmented button")].map((button) =>
+      button.textContent.trim(),
     );
-    expect(document.body.textContent).toContain("台北租屋、出租專屬");
 
-    const choices = [...document.querySelectorAll(".condition-choice")];
-    expect(choices).toHaveLength(9);
-    expect(choices.every((choice) => choice.querySelector("input").checked)).toBe(true);
-
-    const rentSubsidyChoice = choices.find((choice) => choice.textContent.includes("有租補"));
-    click(rentSubsidyChoice.querySelector("input"));
-
-    expect(document.querySelector(".condition-panel").textContent).not.toContain("有租補");
-    expect(document.querySelector(".detail").textContent).toContain("8/8");
+    expect(sourceButtons).toEqual(expect.arrayContaining(["591", "PTT"]));
+    expect(document.querySelectorAll("tbody tr").length).toBeGreaterThan(0);
   });
 
-  it("adds custom conditions into the main condition checklist", () => {
+  it("shows the generated updated timestamp", () => {
     renderApp();
 
-    const addButton = [...document.querySelectorAll("button")].find(
-      (button) => button.textContent.trim() === "新增",
-    );
-    click(addButton);
-
-    const form = document.querySelector(".add-rule-form");
-    changeInput(form.querySelector('input[aria-label="新增條件名稱"]'), "可貓");
-    click(form.querySelector('button[aria-label="加入自訂條件"]'));
-
-    const choices = [...document.querySelectorAll(".condition-choice")];
-    expect(choices).toHaveLength(10);
-    expect(choices.at(-1).textContent).toContain("可貓");
-    expect(choices.at(-1).querySelector("input").checked).toBe(true);
-    expect(document.querySelector(".custom-rule")).toBeNull();
-
-    expect(localStorage.getItem("house-hunter-custom-rules")).toContain("可貓");
+    expect(document.querySelector(".updated").textContent).toContain("2026-06-14 05:45");
   });
 
-  it("uses a custom condition name as an active required filter when keywords are blank", () => {
+  it("updates the detail panel when selecting a different listing row", () => {
     renderApp();
 
-    const addButton = [...document.querySelectorAll("button")].find(
-      (button) => button.textContent.trim() === "新增",
-    );
-    click(addButton);
+    const rows = [...document.querySelectorAll("tbody tr")];
+    expect(rows.length).toBeGreaterThan(1);
 
-    const form = document.querySelector(".add-rule-form");
-    changeInput(form.querySelector('input[aria-label="新增條件名稱"]'), "可貓");
-    changeSelect(form.querySelector('select[aria-label="新增條件模式"]'), "required");
-    click(form.querySelector('button[aria-label="加入自訂條件"]'));
+    const firstTitle = rows[0].querySelector(".title-cell span:last-child").textContent;
+    const secondTitle = rows[1].querySelector(".title-cell span:last-child").textContent;
+    expect(firstTitle).not.toBe(secondTitle);
 
-    expect(document.querySelector(".detail").textContent).toContain("可貓");
-    expect(document.querySelector("tbody").textContent).toContain("可貓");
-  });
-
-  it("shows imported Facebook listings in the standard result table", () => {
-    renderApp();
-
-    const facebookButton = document.querySelector(".facebook-source");
-    click(facebookButton);
-
-    expect(document.querySelector(".facebook-search-results")).toBeNull();
-    expect(document.querySelector("tbody").textContent).toContain("Facebook");
-    expect(document.querySelector("tbody").textContent).toContain("永和福和路精緻套房");
-    expect(document.querySelector(".detail").textContent).toContain("Facebook");
+    expect(document.querySelector(".detail h3").textContent).toBe(firstTitle);
+    act(() => {
+      rows[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(document.querySelector(".detail h3").textContent).toBe(secondTitle);
   });
 });

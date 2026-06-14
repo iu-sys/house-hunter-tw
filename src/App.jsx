@@ -16,7 +16,6 @@ import {
   defaultCustomRule,
 } from "./customConditions.js";
 import { listings, updatedAt } from "./data/listings.js";
-import { facebookRentalGroups } from "./facebookGroups.js";
 import { applyFilters, formatDistrictSummary, getStats, sortListings } from "./listingUtils.js";
 import "./styles.css";
 
@@ -42,7 +41,7 @@ const districts = [
     ...listings.map((listing) => listing.district),
   ]),
 ].sort((a, b) => a.localeCompare(b, "zh-Hant"));
-const knownSources = ["591", "PTT", "Facebook"];
+const knownSources = ["591", "PTT"];
 const sources = [...new Set([...knownSources, ...listings.map((listing) => listing.source)])];
 
 const conditionSortLabel = "\u689d\u4ef6\u7b26\u5408\u5ea6";
@@ -154,10 +153,6 @@ export default function App() {
   const selectedListing =
     visibleListings.find((listing) => listing.id === selectedListingId) || visibleListings[0] || null;
   const visibleStats = getStats(visibleListings);
-  const facebookSelected = selectedSources.includes("Facebook");
-  const hasFacebookListings = listings.some((listing) => listing.source === "Facebook");
-  const showFacebookGroupResults = facebookSelected && !hasFacebookListings && visibleListings.length === 0;
-
   function updateCustomRule(id, patch) {
     setCustomRules((rules) =>
       rules.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)),
@@ -272,7 +267,6 @@ export default function App() {
                 <button
                   className={[
                     selectedSources.includes(source) ? "active" : "",
-                    source === "Facebook" ? "facebook-source" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -281,20 +275,6 @@ export default function App() {
                 >
                   {source}
                 </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="facebook-groups">
-            <div className="filter-head">
-              <span>臉書社團</span>
-            </div>
-            <div className="facebook-group-list">
-              {facebookRentalGroups.map((group) => (
-                <a href={group.url} key={group.url} rel="noreferrer" target="_blank">
-                  <span>{group.name}</span>
-                  <ExternalLink size={13} />
-                </a>
               ))}
             </div>
           </section>
@@ -431,12 +411,8 @@ export default function App() {
         <section className="results">
           <div className="toolbar">
             <div>
-              <h2>{showFacebookGroupResults ? "臉書社團搜尋入口" : "出租套房清單"}</h2>
-              <p>
-                {showFacebookGroupResults
-                  ? `目前尚未匯入 Facebook 房源，先查看 ${facebookRentalGroups.length} 個租屋社團`
-                  : formatDistrictSummary(visibleStats.byDistrict) || "沒有符合條件的物件"}
-              </p>
+              <h2>出租套房清單</h2>
+              <p>{formatDistrictSummary(visibleStats.byDistrict) || "沒有符合條件的物件"}</p>
             </div>
             <label className="sort-control">
               <ArrowDownUp size={16} />
@@ -450,84 +426,69 @@ export default function App() {
             </label>
           </div>
 
-          {showFacebookGroupResults ? (
-            <div className="facebook-search-results">
-              {facebookRentalGroups.map((group) => (
-                <a className="facebook-result-card" href={group.url} key={group.url} rel="noreferrer" target="_blank">
-                  <div>
-                    <span className="source source-facebook">Facebook</span>
-                    <h3>{group.name}</h3>
-                    <p>開啟社團後搜尋：套房、15000、可租補、對外窗、可貓</p>
-                  </div>
-                  <ExternalLink size={17} />
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>區域</th>
-                    <th>價格</th>
-                    <th>標題</th>
-                    <th>坪數</th>
-                    <th>捷運站</th>
-                    <th>來源</th>
-                    <th>{conditionColumnLabel}</th>
-                    <th>連結</th>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>區域</th>
+                  <th>價格</th>
+                  <th>標題</th>
+                  <th>坪數</th>
+                  <th>捷運站</th>
+                  <th>來源</th>
+                  <th>{conditionColumnLabel}</th>
+                  <th>連結</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleListings.map((listing) => (
+                  <tr
+                    className={selectedListing?.id === listing.id ? "selected-row" : ""}
+                    key={listing.id}
+                    onClick={() => setSelectedListingId(listing.id)}
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedListingId(listing.id);
+                      }
+                    }}
+                  >
+                    <td>{listing.district}</td>
+                    <td className="price">{listing.priceText}</td>
+                    <td>
+                      <div className="title-cell">
+                        {listing.isNew && <span className="new-dot">新</span>}
+                        <span>{listing.title}</span>
+                      </div>
+                      <CompactConditionTags listing={listing} />
+                    </td>
+                    <td>{listing.area || "-"}</td>
+                    <td>{listing.metro || "-"}</td>
+                    <td>
+                      <span className={`source source-${listing.source.toLowerCase()}`}>
+                        {listing.source}
+                      </span>
+                    </td>
+                    <td>
+                      <ConditionScore listing={listing} />
+                    </td>
+                    <td>
+                      <a
+                        className="open-link"
+                        href={listing.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <ExternalLink size={15} />
+                      </a>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {visibleListings.map((listing) => (
-                    <tr
-                      className={selectedListing?.id === listing.id ? "selected-row" : ""}
-                      key={listing.id}
-                      onClick={() => setSelectedListingId(listing.id)}
-                      tabIndex={0}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setSelectedListingId(listing.id);
-                        }
-                      }}
-                    >
-                      <td>{listing.district}</td>
-                      <td className="price">{listing.priceText}</td>
-                      <td>
-                        <div className="title-cell">
-                          {listing.isNew && <span className="new-dot">新</span>}
-                          <span>{listing.title}</span>
-                        </div>
-                        <CompactConditionTags listing={listing} />
-                      </td>
-                      <td>{listing.area || "-"}</td>
-                      <td>{listing.metro || "-"}</td>
-                      <td>
-                        <span className={`source source-${listing.source.toLowerCase()}`}>
-                          {listing.source}
-                        </span>
-                      </td>
-                      <td>
-                        <ConditionScore listing={listing} />
-                      </td>
-                      <td>
-                        <a
-                          className="open-link"
-                          href={listing.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <ExternalLink size={15} />
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <aside className="detail" aria-label="推薦物件">
@@ -569,12 +530,6 @@ export default function App() {
                 <ExternalLink size={16} />
               </a>
             </>
-          ) : showFacebookGroupResults ? (
-            <div className="empty-state">
-              <Bell size={22} />
-              <h3>Facebook 房源待匯入</h3>
-              <p>先打開左側或清單中的臉書社團，找到符合條件的貼文後再匯入房子獵人。</p>
-            </div>
           ) : (
             <div className="empty-state">
               <Bell size={22} />

@@ -2,7 +2,11 @@ import fs from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { JSDOM } from "jsdom";
-import { FACEBOOK_SOURCE, loadFacebookListings } from "./facebook-import.mjs";
+import {
+  DETAIL_FETCH_FAILURE_LABEL,
+  prepareListingsForEnrichment,
+} from "./update-data-utils.mjs";
+import { listings as previousListings } from "../src/data/listings.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,6 +44,13 @@ const PTT_RECENT_DAYS = 3;
 const MIN_SAFE_LISTING_COUNT = 500;
 
 const BLOCKED_TEXT = [
+  "車位",
+  "停車",
+  "機車位",
+  "汽車位",
+  "汽車機械車位",
+  "倉庫",
+  "店面",
   "限女性",
   "限女",
   "限單人",
@@ -480,7 +491,7 @@ function matchedRequiredConditions(text) {
 }
 
 async function enrichListing(listing) {
-  if (listing.source === "PTT" || listing.source === FACEBOOK_SOURCE) return listing;
+  if (listing.source === "PTT") return listing;
 
   try {
     const html = await fetchDetailPage(listing.url);
@@ -504,7 +515,7 @@ async function enrichListing(listing) {
       detailText: "",
       fullText,
       matchedConditions,
-      missingConditions: [...missingRequiredConditions(fullText), "詳情頁讀取失敗"],
+      missingConditions: [...missingRequiredConditions(fullText), DETAIL_FETCH_FAILURE_LABEL],
       isMaleAllowed: !FEMALE_ONLY_PATTERNS.some((pattern) => pattern.test(fullText)),
       detailError: error.message,
     };
@@ -598,20 +609,26 @@ allListings.push(...listPages.flat());
 const pttListings = await fetchPttListings();
 allListings.push(...pttListings);
 
-const facebookListings = await loadFacebookListings("data/facebook-listings.json", {
-  targetDistricts: TARGET_DISTRICTS,
-  blockedText: BLOCKED_TEXT,
-  femaleOnlyPatterns: FEMALE_ONLY_PATTERNS,
-  matchedRequiredConditions,
-  missingRequiredConditions,
-});
-allListings.push(...facebookListings);
-
 const uniqueListings = [...new Map(allListings.map((listing) => [listing.url, listing])).values()];
 const basicListings = uniqueListings.filter(shouldKeep);
-console.log(`Checking ${basicListings.length} candidate listings against detail conditions...`);
+const previousListingsByUrl = new Map(
+  previousListings
+    .filter((listing) => listing.source === "591")
+    .map((listing) => [listing.url, listing]),
+);
+const { readyListings, listingsNeedingEnrichment } = prepareListingsForEnrichment(
+  basicListings,
+  previousListingsByUrl,
+);
+console.log(
+  `Checking ${listingsNeedingEnrichment.length} candidate listings against detail conditions ` +
+    `(${readyListings.length} reused from previous data)...`,
+);
 
-const enrichedListings = await mapWithConcurrency(basicListings, 4, enrichListing);
+const enrichedListings = [
+  ...readyListings,
+  ...(await mapWithConcurrency(listingsNeedingEnrichment, 4, enrichListing)),
+];
 const rejectedByGender = enrichedListings.filter((listing) => !listing.isMaleAllowed);
 const listings = enrichedListings
   .filter((listing) => listing.isMaleAllowed)
@@ -637,11 +654,8 @@ const byDistrict = listings.reduce((counts, listing) => {
   return counts;
 }, {});
 
-console.log(`Updated ${listings.length} listings from 591, PTT, and Facebook.`);
+console.log(`Updated ${listings.length} listings from 591 and PTT.`);
 console.log(`PTT kept ${listings.filter((listing) => listing.source === "PTT").length} listings.`);
-console.log(
-  `Facebook kept ${listings.filter((listing) => listing.source === FACEBOOK_SOURCE).length} listings.`,
-);
 console.log(
   Object.entries(byDistrict)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hant"))
