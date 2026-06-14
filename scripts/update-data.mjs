@@ -5,6 +5,7 @@ import { JSDOM } from "jsdom";
 import {
   DETAIL_FETCH_FAILURE_LABEL,
   prepareListingsForEnrichment,
+  shouldDropListingAfterDetailError,
 } from "./update-data-utils.mjs";
 import { listings as previousListings } from "../src/data/listings.js";
 
@@ -508,6 +509,11 @@ async function enrichListing(listing) {
       isMaleAllowed: !FEMALE_ONLY_PATTERNS.some((pattern) => pattern.test(fullText)),
     };
   } catch (error) {
+    if (shouldDropListingAfterDetailError(listing, error)) {
+      console.warn(`Dropped stale 591 listing ${listing.url}: ${error.message}`);
+      return null;
+    }
+
     const fullText = `${listing.title} ${listing.text}`;
     const matchedConditions = matchedRequiredConditions(fullText);
     return {
@@ -519,6 +525,23 @@ async function enrichListing(listing) {
       isMaleAllowed: !FEMALE_ONLY_PATTERNS.some((pattern) => pattern.test(fullText)),
       detailError: error.message,
     };
+  }
+}
+
+async function validateReusedListing(listing) {
+  if (listing.source !== "591") return listing;
+
+  try {
+    await fetchDetailPage(listing.url);
+    return listing;
+  } catch (error) {
+    if (shouldDropListingAfterDetailError(listing, error)) {
+      console.warn(`Dropped reused stale 591 listing ${listing.url}: ${error.message}`);
+      return null;
+    }
+
+    console.warn(`Kept reused 591 listing after validation error ${listing.url}: ${error.message}`);
+    return listing;
   }
 }
 
@@ -625,9 +648,13 @@ console.log(
     `(${readyListings.length} reused from previous data)...`,
 );
 
+const validatedReadyListings = (
+  await mapWithConcurrency(readyListings, 4, validateReusedListing)
+).filter(Boolean);
+
 const enrichedListings = [
-  ...readyListings,
-  ...(await mapWithConcurrency(listingsNeedingEnrichment, 4, enrichListing)),
+  ...validatedReadyListings,
+  ...(await mapWithConcurrency(listingsNeedingEnrichment, 4, enrichListing)).filter(Boolean),
 ];
 const rejectedByGender = enrichedListings.filter((listing) => !listing.isMaleAllowed);
 const listings = enrichedListings

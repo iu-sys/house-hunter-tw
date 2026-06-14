@@ -3,6 +3,7 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import App from "./App.jsx";
+import { updatedAt } from "./data/listings.js";
 
 let root;
 
@@ -42,7 +43,7 @@ describe("App", () => {
   it("shows the generated updated timestamp", () => {
     renderApp();
 
-    expect(document.querySelector(".updated").textContent).toContain("2026-06-14 05:45");
+    expect(document.querySelector(".updated").textContent).toContain(updatedAt);
   });
 
   it("updates the detail panel when selecting a different listing row", () => {

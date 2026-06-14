@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DETAIL_FETCH_FAILURE_LABEL,
   canReusePreviousListingDetails,
+  shouldDropListingAfterDetailError,
   prepareListingsForEnrichment,
 } from "./update-data-utils.mjs";
 
@@ -76,5 +77,17 @@ describe("update-data utils", () => {
       },
     ]);
     expect(listingsNeedingEnrichment).toEqual([failedCurrentListing]);
+  });
+
+  it("drops 591 listings when detail fetch confirms the page is gone", () => {
+    const curl404Error = new Error("curl: (22) The requested URL returned error: 404");
+
+    expect(shouldDropListingAfterDetailError(baseListing, curl404Error)).toBe(true);
+    expect(shouldDropListingAfterDetailError(baseListing, new Error("operation timed out"))).toBe(
+      false,
+    );
+    expect(
+      shouldDropListingAfterDetailError({ ...baseListing, source: "PTT" }, curl404Error),
+    ).toBe(false);
   });
 });

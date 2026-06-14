@@ -1,5 +1,16 @@
 export const DETAIL_FETCH_FAILURE_LABEL = "詳情頁讀取失敗";
 
+export function shouldDropListingAfterDetailError(listing, error) {
+  if (!listing || listing.source !== "591" || !error) return false;
+
+  const message =
+    typeof error === "string"
+      ? error
+      : [error.message, error.stderr, error.stdout].filter(Boolean).join("\n");
+
+  return /requested url returned error:\s*404/i.test(message);
+}
+
 export function canReusePreviousListingDetails(currentListing, previousListing) {
   if (!currentListing || !previousListing) return false;
   if (currentListing.source !== "591" || previousListing.source !== "591") return false;
