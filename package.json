@@ -5,18 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
+    "build": "vite build && node scripts/verify-dist-updated.mjs",
+    "deploy:netlify": "npx netlify-cli deploy --prod --dir dist --site 23ddef74-9470-4dc9-b5fb-53096501534e",
+    "publish": "npm run build && npm run deploy:netlify",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "update:data": "node scripts/update-data.mjs"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^5.0.0",
+    "@vitejs/plugin-react": "^6.0.2",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "typescript": "^5.8.3",
-    "vite": "^7.0.0"
+    "vite": "^8.0.16"
   },
   "devDependencies": {
     "jsdom": "^26.1.0",

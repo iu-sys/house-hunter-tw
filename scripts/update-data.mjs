@@ -4,7 +4,9 @@ import { promisify } from "node:util";
 import { JSDOM } from "jsdom";
 import {
   DETAIL_FETCH_FAILURE_LABEL,
+  getMaxListPage,
   prepareListingsForEnrichment,
+  resolveListingWritePlan,
   shouldDropListingAfterDetailError,
 } from "./update-data-utils.mjs";
 import { listings as previousListings } from "../src/data/listings.js";
@@ -32,12 +34,7 @@ const TARGET_DISTRICTS = [
   "土城區",
 ];
 
-const PAGE_SIZE = 30;
-const MAX_FIRST_ROW = 1500;
-const REGIONS = [1, 3].map((id) => ({
-  id,
-  rows: Array.from({ length: MAX_FIRST_ROW / PAGE_SIZE + 1 }, (_, index) => index * PAGE_SIZE),
-}));
+const REGIONS = [1, 3];
 
 const PTT_BOARDS = ["Rent_tao", "Rent_apart"];
 const PTT_MAX_PAGES_PER_BOARD = 8;
@@ -84,6 +81,48 @@ const FEMALE_ONLY_PATTERNS = [
   /女性套房/,
   /單人女性/,
 ];
+
+FEMALE_ONLY_PATTERNS.splice(
+  0,
+  FEMALE_ONLY_PATTERNS.length,
+  /\u5973\u6027/u,
+  /\u9650\s*\u5973/u,
+  /\u9650\s*\u5973\u6027/u,
+  /\u5973\u751f/u,
+  /\u5973\u58eb/u,
+  /\u5973\u4ed5/u,
+  /\u5973\u5b69/u,
+  /\u5973\u6027\u5c08\u5c6c/u,
+  /\u5973\u6027\u9996\u9078/u,
+  /female/i,
+);
+
+const EXCLUDED_LISTING_PATTERNS = [
+  /\u5973\u6027/u,
+  /\u9650\s*\u5973/u,
+  /\u5973\u751f/u,
+  /\u5973\u4ed5/u,
+  /\u5973\u5b69/u,
+  /female/i,
+  /\u9650\s*\u55ae\u4eba/u,
+  /\u9650\s*[1\u4e00]\s*\u4eba/u,
+  /\u55ae\u4eba\u5165\u4f4f/u,
+  /\u4e00\u4eba\u5165\u4f4f/u,
+  /\u50c5\u9650\u4e00\u4eba/u,
+  /\u96c5\u623f/u,
+  /\u8eca\u4f4d/u,
+  /\u505c\u8eca/u,
+  /\u5009\u5eab/u,
+  /\u5e97\u9762/u,
+  /\u5e97\u8216/u,
+  /\u5546\u8216/u,
+  /\u5df2\u51fa\u79df/u,
+  /\u5df2\u79df\u51fa/u,
+  /\u5df2\u6536\u8a02/u,
+  /\u5df2\u6536\u8a02\u91d1/u,
+];
+
+const ADMIN_ONLY_PATTERNS = [/\u6236\u7c4d/u, /\u5b78\u5340/u];
 
 const REQUIRED_CONDITIONS = [
   { label: "對外窗", test: (text) => hasExteriorWindow(text) },
@@ -138,20 +177,28 @@ function isPttFemaleOnlyTitle(title) {
   return /^\[\s*女\s*\//.test(title);
 }
 
-function buildUrl(region, firstRow) {
+function hasExcludedListingText(text) {
+  return EXCLUDED_LISTING_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function isAdministrativeOnlyListing(listing, text) {
+  return listing.price < 4000 && ADMIN_ONLY_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function buildUrl(region, page = 1) {
   const params = new URLSearchParams({
     region: String(region),
     kind: "2,3",
     rentprice: "0,15000",
     order: "posttime",
     orderType: "desc",
-    firstRow: String(firstRow),
   });
+  if (page > 1) params.set("page", String(page));
   return `https://rent.591.com.tw/list?${params.toString()}`;
 }
 
-async function fetchListPage(region, firstRow) {
-  const url = buildUrl(region, firstRow);
+async function fetchListPage(region, page = 1) {
+  const url = buildUrl(region, page);
   return fetchWithRetry(url, {
     headers: {
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -159,6 +206,14 @@ async function fetchListPage(region, firstRow) {
       "User-Agent": userAgent,
     },
   });
+}
+
+function getListPageCount(document) {
+  return getMaxListPage(
+    [...document.querySelectorAll("a")]
+      .map((link) => link.getAttribute("href") || "")
+      .filter((href) => href.includes("/list?") && href.includes("page=")),
+  );
 }
 
 async function fetchDetailPage(url) {
@@ -335,6 +390,7 @@ async function fetchPttListings() {
 
   for (const board of PTT_BOARDS) {
     let page = "index";
+    try {
 
     for (let pageCount = 0; page && pageCount < PTT_MAX_PAGES_PER_BOARD; pageCount += 1) {
       const html = await fetchPttPage(board, page);
@@ -387,6 +443,9 @@ async function fetchPttListings() {
       }
 
       page = getPttPreviousPage(document);
+    }
+    } catch (error) {
+      console.warn(`Skipped PTT board ${board}: ${error.message}`);
     }
   }
 
@@ -473,7 +532,14 @@ function parseListing(item) {
 function shouldKeep(listing) {
   if (!listing.url || !listing.title || !listing.district) return false;
   if (!listing.price || listing.price > 15000) return false;
-  if (BLOCKED_TEXT.some((blocked) => `${listing.title} ${listing.text}`.includes(blocked))) {
+  const listingText = `${listing.title} ${listing.text} ${listing.url}`;
+  if (BLOCKED_TEXT.some((blocked) => listingText.includes(blocked))) {
+    return false;
+  }
+  if (hasExcludedListingText(listingText)) {
+    return false;
+  }
+  if (isAdministrativeOnlyListing(listing, listingText)) {
     return false;
   }
   return true;
@@ -525,23 +591,6 @@ async function enrichListing(listing) {
       isMaleAllowed: !FEMALE_ONLY_PATTERNS.some((pattern) => pattern.test(fullText)),
       detailError: error.message,
     };
-  }
-}
-
-async function validateReusedListing(listing) {
-  if (listing.source !== "591") return listing;
-
-  try {
-    await fetchDetailPage(listing.url);
-    return listing;
-  } catch (error) {
-    if (shouldDropListingAfterDetailError(listing, error)) {
-      console.warn(`Dropped reused stale 591 listing ${listing.url}: ${error.message}`);
-      return null;
-    }
-
-    console.warn(`Kept reused 591 listing after validation error ${listing.url}: ${error.message}`);
-    return listing;
   }
 }
 
@@ -611,21 +660,47 @@ export const listings = rawListings.map(([source, district, price, priceText, ti
 }
 
 const allListings = [];
-const listTargets = REGIONS.flatMap((region) =>
-  region.rows.map((firstRow) => ({ region: region.id, firstRow })),
-);
-
-const listPages = await mapWithConcurrency(listTargets, 4, async ({ region, firstRow }) => {
+const regionFirstPages = await mapWithConcurrency(REGIONS, 2, async (region) => {
   try {
-    const html = await fetchListPage(region, firstRow);
+    const html = await fetchListPage(region, 1);
     const document = new JSDOM(html).window.document;
-    const items = [...document.querySelectorAll(".item[data-id]")];
-    return items.map(parseListing);
+    return {
+      region,
+      html,
+      pageCount: getListPageCount(document),
+      listings: [...document.querySelectorAll(".item[data-id]")].map(parseListing),
+    };
   } catch (error) {
-    console.warn(`Skipped 591 list page region=${region} firstRow=${firstRow}: ${error.message}`);
-    return [];
+    console.warn(`Skipped 591 first list page region=${region}: ${error.message}`);
+    return {
+      region,
+      html: "",
+      pageCount: 0,
+      listings: [],
+    };
   }
 });
+
+const listTargets = regionFirstPages.flatMap(({ region, pageCount }) =>
+  Array.from({ length: Math.max(pageCount - 1, 0) }, (_, index) => ({
+    region,
+    page: index + 2,
+  })),
+);
+
+const listPages = [
+  ...regionFirstPages.map(({ listings }) => listings),
+  ...(await mapWithConcurrency(listTargets, 4, async ({ region, page }) => {
+    try {
+      const html = await fetchListPage(region, page);
+      const document = new JSDOM(html).window.document;
+      return [...document.querySelectorAll(".item[data-id]")].map(parseListing);
+    } catch (error) {
+      console.warn(`Skipped 591 list page region=${region} page=${page}: ${error.message}`);
+      return [];
+    }
+  })),
+];
 
 allListings.push(...listPages.flat());
 
@@ -648,16 +723,12 @@ console.log(
     `(${readyListings.length} reused from previous data)...`,
 );
 
-const validatedReadyListings = (
-  await mapWithConcurrency(readyListings, 4, validateReusedListing)
-).filter(Boolean);
-
 const enrichedListings = [
-  ...validatedReadyListings,
+  ...readyListings,
   ...(await mapWithConcurrency(listingsNeedingEnrichment, 4, enrichListing)).filter(Boolean),
 ];
 const rejectedByGender = enrichedListings.filter((listing) => !listing.isMaleAllowed);
-const listings = enrichedListings
+const nextListings = enrichedListings
   .filter((listing) => listing.isMaleAllowed)
   .sort((a, b) => {
     if (a.matchedConditions.length !== b.matchedConditions.length) {
@@ -668,10 +739,15 @@ const listings = enrichedListings
   })
   .map(({ text, detailText, fullText, detailError, isMaleAllowed, ...listing }) => listing);
 
-if (listings.length < MIN_SAFE_LISTING_COUNT) {
-  throw new Error(
-    `Refusing to write only ${listings.length} listings; expected at least ${MIN_SAFE_LISTING_COUNT}.`,
-  );
+const writePlan = resolveListingWritePlan({
+  nextListings,
+  previousListings,
+  minSafeListingCount: MIN_SAFE_LISTING_COUNT,
+});
+const listings = writePlan.listings;
+
+if (writePlan.warning) {
+  console.warn(writePlan.warning);
 }
 
 await fs.writeFile("src/data/listings.js", serializeListings(listings), "utf8");
@@ -681,7 +757,11 @@ const byDistrict = listings.reduce((counts, listing) => {
   return counts;
 }, {});
 
-console.log(`Updated ${listings.length} listings from 591 and PTT.`);
+console.log(
+  writePlan.mode === "fresh"
+    ? `Updated ${listings.length} listings from 591 and PTT.`
+    : `Kept previous ${listings.length} listings because the fresh scrape was incomplete.`,
+);
 console.log(`PTT kept ${listings.filter((listing) => listing.source === "PTT").length} listings.`);
 console.log(
   Object.entries(byDistrict)

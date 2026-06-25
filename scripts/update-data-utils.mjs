@@ -34,7 +34,19 @@ export function restorePreviousListingDetails(currentListing, previousListing) {
     ...currentListing,
     matchedConditions: [...previousListing.matchedConditions],
     missingConditions: [...previousListing.missingConditions],
+    isMaleAllowed: previousListing.isMaleAllowed ?? true,
   };
+}
+
+export function getMaxListPage(urls) {
+  const pageNumbers = (Array.isArray(urls) ? urls : [])
+    .map((url) => {
+      const href = typeof url === "string" ? url : "";
+      return Number(href.match(/page=(\d+)/)?.[1] || 0);
+    })
+    .filter(Boolean);
+
+  return pageNumbers.length > 0 ? Math.max(...pageNumbers) : 1;
 }
 
 export function prepareListingsForEnrichment(listings, previousListingsByUrl) {
@@ -54,4 +66,34 @@ export function prepareListingsForEnrichment(listings, previousListingsByUrl) {
   }
 
   return { readyListings, listingsNeedingEnrichment };
+}
+
+export function resolveListingWritePlan({
+  nextListings,
+  previousListings,
+  minSafeListingCount,
+}) {
+  const freshListings = Array.isArray(nextListings) ? nextListings : [];
+  const fallbackListings = Array.isArray(previousListings) ? previousListings : [];
+  const minimumCount = Number(minSafeListingCount) || 0;
+
+  if (freshListings.length >= minimumCount) {
+    return {
+      mode: "fresh",
+      listings: freshListings,
+      warning: "",
+    };
+  }
+
+  if (fallbackListings.length >= minimumCount) {
+    return {
+      mode: "fallback",
+      listings: fallbackListings,
+      warning: `Only ${freshListings.length} fresh listings found; keeping previous ${fallbackListings.length} listings.`,
+    };
+  }
+
+  throw new Error(
+    `Refusing to write only ${freshListings.length} listings; expected at least ${minimumCount}.`,
+  );
 }
