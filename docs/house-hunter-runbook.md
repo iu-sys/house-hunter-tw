@@ -151,3 +151,16 @@ https://iu-sys.github.io/house-hunter-tw/?v=<commit-sha>
 
 - 詳細事件摘要：`docs/house-hunter-2026-06-25-summary.md`
 - 更新計畫紀錄：`docs/superpowers/plans/2026-06-24-rental-listings-refresh.md`
+
+## 2026-06-26 失效 591 連結事件補充
+
+使用者回報點開 591 連結 `https://rent.591.com.tw/21509610` 後，591 顯示物件不存在。檢查後確認本機 `src/data/listings.js` 已更新到 `2026-06-26 02:15` 且不含該連結，但 GitHub Pages live bundle 仍含舊資料 `2026-06-25 02:50`。
+
+下次處理房子獵人前，必須先讀本 runbook。每次更新後，除了 `npm test`、`npm run build`、`npm audit --json`，還要確認：
+
+1. `src/data/listings.js` 已 commit。
+2. commit 已 push 到 `origin/main`。
+3. GitHub Actions `Deploy GitHub Pages` 成功。
+4. live asset 不含已知失效連結，且含最新 `updatedAt`。
+
+詳細事件紀錄：`docs/house-hunter-2026-06-26-stale-link-incident.md`
