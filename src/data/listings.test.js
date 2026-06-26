@@ -37,12 +37,12 @@ describe("generated listing data", () => {
     );
     expect(invalid591SourceUrls).toEqual([]);
 
-    const invalid591LookupUrls = listings.filter(
+    const invalid591ClickUrls = listings.filter(
       (listing) =>
         listing.source === "591" &&
-        !/^https:\/\/www\.google\.com\/search\?q=site%3Arent\.591\.com\.tw\+/.test(listing.url),
+        !/^https:\/\/rent\.591\.com\.tw\/\d+/.test(listing.url),
     );
-    expect(invalid591LookupUrls).toEqual([]);
+    expect(invalid591ClickUrls).toEqual([]);
   });
 
   it("retains recent PTT suite listings alongside 591 data", () => {

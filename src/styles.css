@@ -686,10 +686,6 @@ tbody tr.selected-row {
   width: 28px;
 }
 
-.blocked-link {
-  color: #b45309;
-}
-
 .detail {
   padding: 18px;
   position: sticky;
