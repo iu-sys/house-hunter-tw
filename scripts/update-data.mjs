@@ -5,6 +5,7 @@ import { JSDOM } from "jsdom";
 import {
   DETAIL_FETCH_FAILURE_LABEL,
   getMaxListPage,
+  normalizeListingForWrite,
   prepareListingsForEnrichment,
   resolveListingWritePlan,
   shouldDropListingAfterDetailError,
@@ -368,6 +369,7 @@ function parsePttListing({ board, title, url, dateText, document }) {
     title,
     area,
     metro,
+    sourceUrl: url,
     url,
     isNew: true,
     text: fullText,
@@ -523,6 +525,7 @@ function parseListing(item) {
     title,
     area,
     metro,
+    sourceUrl: sourceUrl,
     url: sourceUrl,
     isNew,
     text,
@@ -621,6 +624,7 @@ function serializeListings(listings) {
         listing.title,
         listing.area,
         listing.metro,
+        listing.sourceUrl || listing.url,
         listing.url,
         listing.isNew,
         listing.matchedConditions,
@@ -641,7 +645,7 @@ const rawListings = [
   ${rows},
 ];
 
-export const listings = rawListings.map(([source, district, price, priceText, title, area, metro, url, isNew, matchedConditions = [], missingConditions = []], index) => ({
+export const listings = rawListings.map(([source, district, price, priceText, title, area, metro, sourceUrl, url, isNew, matchedConditions = [], missingConditions = []], index) => ({
   id: \`\${source}-\${index + 1}\`,
   source,
   district,
@@ -650,6 +654,7 @@ export const listings = rawListings.map(([source, district, price, priceText, ti
   title,
   area,
   metro,
+  sourceUrl,
   url,
   isNew,
   matchedConditions,
@@ -712,7 +717,7 @@ const basicListings = uniqueListings.filter(shouldKeep);
 const previousListingsByUrl = new Map(
   previousListings
     .filter((listing) => listing.source === "591")
-    .map((listing) => [listing.url, listing]),
+    .map((listing) => [listing.sourceUrl || listing.url, listing]),
 );
 const { readyListings, listingsNeedingEnrichment } = prepareListingsForEnrichment(
   basicListings,
@@ -744,7 +749,7 @@ const writePlan = resolveListingWritePlan({
   previousListings,
   minSafeListingCount: MIN_SAFE_LISTING_COUNT,
 });
-const listings = writePlan.listings;
+const listings = writePlan.listings.map(normalizeListingForWrite);
 
 if (writePlan.warning) {
   console.warn(writePlan.warning);

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildListingLookupUrl,
   DETAIL_FETCH_FAILURE_LABEL,
   canReusePreviousListingDetails,
   getMaxListPage,
+  normalizeListingForWrite,
   prepareListingsForEnrichment,
   resolveListingWritePlan,
   shouldDropListingAfterDetailError,
@@ -87,14 +89,53 @@ describe("update-data utils", () => {
 
   it("drops 591 listings when detail fetch confirms the page is gone", () => {
     const curl404Error = new Error("curl: (22) The requested URL returned error: 404");
+    const curl406Error = new Error("curl: (22) The requested URL returned error: 406");
 
     expect(shouldDropListingAfterDetailError(baseListing, curl404Error)).toBe(true);
+    expect(shouldDropListingAfterDetailError(baseListing, curl406Error)).toBe(true);
     expect(shouldDropListingAfterDetailError(baseListing, new Error("operation timed out"))).toBe(
       false,
     );
     expect(
       shouldDropListingAfterDetailError({ ...baseListing, source: "PTT" }, curl404Error),
     ).toBe(false);
+  });
+
+  it("builds a search lookup URL instead of opening 591 links that return 406", () => {
+    expect(
+      buildListingLookupUrl({
+        ...baseListing,
+        district: "三重區",
+        title: "【可寵可租補】三重集美街精緻套房/有垃圾代收/免追垃圾車",
+      }),
+    ).toBe(
+      "https://www.google.com/search?q=site%3Arent.591.com.tw+123456+%E5%8F%AF%E5%AF%B5%E5%8F%AF%E7%A7%9F%E8%A3%9C+%E4%B8%89%E9%87%8D%E9%9B%86%E7%BE%8E%E8%A1%97%E7%B2%BE%E7%B7%BB%E5%A5%97%E6%88%BF+%E6%9C%89%E5%9E%83%E5%9C%BE%E4%BB%A3%E6%94%B6+%E5%85%8D%E8%BF%BD%E5%9E%83%E5%9C%BE%E8%BB%8A",
+    );
+  });
+
+  it("keeps PTT links unchanged because article URLs are already canonical", () => {
+    expect(
+      buildListingLookupUrl({
+        source: "PTT",
+        url: "https://www.ptt.cc/bbs/Rent_tao/M.1782445812.A.1B5.html",
+      }),
+    ).toBe("https://www.ptt.cc/bbs/Rent_tao/M.1782445812.A.1B5.html");
+  });
+
+  it("normalizes fallback 591 listings to keep sourceUrl but replace dead click URLs", () => {
+    expect(
+      normalizeListingForWrite({
+        ...baseListing,
+        district: "中和區",
+        title: "景安站採光套房",
+      }),
+    ).toEqual({
+      ...baseListing,
+      district: "中和區",
+      title: "景安站採光套房",
+      sourceUrl: "https://rent.591.com.tw/123456",
+      url: "https://www.google.com/search?q=site%3Arent.591.com.tw+123456+%E6%99%AF%E5%AE%89%E7%AB%99%E6%8E%A1%E5%85%89%E5%A5%97%E6%88%BF",
+    });
   });
 
   it("detects the real last 591 list page from pagination links", () => {

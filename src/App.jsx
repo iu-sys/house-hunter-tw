@@ -57,6 +57,14 @@ function toggleValue(values, value) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
 
+function isBlocked591Listing(listing) {
+  return listing?.source === "591";
+}
+
+function get591ListingId(listing) {
+  return String(listing?.sourceUrl || listing?.url || "").match(/rent\.591\.com\.tw\/(\d+)/)?.[1] || "";
+}
+
 function createCustomRule() {
   return {
     ...defaultCustomRule,
@@ -178,6 +186,18 @@ export default function App() {
     ]);
     setDraftRule(createDraftRule());
     setIsAddingRule(false);
+  }
+
+  function copyListingReference(listing) {
+    const sourceId = get591ListingId(listing);
+    const reference = sourceId ? `591 物件編號 ${sourceId}` : listing.title;
+
+    navigator.clipboard?.writeText(reference).catch(() => {});
+    setRefreshNote(
+      sourceId
+        ? `591 直連目前會被擋成 406；已複製物件編號 ${sourceId}，請到 591 站內搜尋。`
+        : "591 直連目前會被擋成 406；請用標題到 591 站內搜尋。",
+    );
   }
 
   return (
@@ -474,15 +494,28 @@ export default function App() {
                       <ConditionScore listing={listing} />
                     </td>
                     <td>
-                      <a
-                        className="open-link"
-                        href={listing.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <ExternalLink size={15} />
-                      </a>
+                      {isBlocked591Listing(listing) ? (
+                        <button
+                          className="open-link blocked-link"
+                          title="591 直連目前會被擋成 406，點擊複製物件編號"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            copyListingReference(listing);
+                          }}
+                        >
+                          <ExternalLink size={15} />
+                        </button>
+                      ) : (
+                        <a
+                          className="open-link"
+                          href={listing.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <ExternalLink size={15} />
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -525,10 +558,26 @@ export default function App() {
                 </div>
               </dl>
               <ConditionTags listing={selectedListing} />
-              <a className="primary-link" href={selectedListing.url} target="_blank" rel="noreferrer">
-                打開物件
-                <ExternalLink size={16} />
-              </a>
+              {isBlocked591Listing(selectedListing) ? (
+                <button
+                  className="primary-link"
+                  title="591 直連目前會被擋成 406，點擊複製物件編號"
+                  onClick={() => copyListingReference(selectedListing)}
+                >
+                  複製 591 編號
+                  <ExternalLink size={16} />
+                </button>
+              ) : (
+                <a
+                  className="primary-link"
+                  href={selectedListing.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  打開物件
+                  <ExternalLink size={16} />
+                </a>
+              )}
             </>
           ) : (
             <div className="empty-state">

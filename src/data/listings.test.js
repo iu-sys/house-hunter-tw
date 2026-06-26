@@ -27,14 +27,22 @@ describe("generated listing data", () => {
     expect(listings.length).toBeGreaterThanOrEqual(500);
   });
 
-  it("keeps only target districts, allowed sources, and direct 591 listing URLs", () => {
+  it("keeps only target districts, allowed sources, and stable source links", () => {
     expect(listings.every((listing) => targetDistricts.has(listing.district))).toBe(true);
     expect(listings.every((listing) => ["591", "PTT"].includes(listing.source))).toBe(true);
 
-    const invalid591Urls = listings.filter(
-      (listing) => listing.source === "591" && !/rent\.591\.com\.tw\/\d+/.test(listing.url),
+    const invalid591SourceUrls = listings.filter(
+      (listing) =>
+        listing.source === "591" && !/rent\.591\.com\.tw\/\d+/.test(listing.sourceUrl || ""),
     );
-    expect(invalid591Urls).toEqual([]);
+    expect(invalid591SourceUrls).toEqual([]);
+
+    const invalid591LookupUrls = listings.filter(
+      (listing) =>
+        listing.source === "591" &&
+        !/^https:\/\/www\.google\.com\/search\?q=site%3Arent\.591\.com\.tw\+/.test(listing.url),
+    );
+    expect(invalid591LookupUrls).toEqual([]);
   });
 
   it("retains recent PTT suite listings alongside 591 data", () => {

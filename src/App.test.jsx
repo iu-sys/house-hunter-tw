@@ -62,4 +62,18 @@ describe("App", () => {
     });
     expect(document.querySelector(".detail h3").textContent).toBe(secondTitle);
   });
+
+  it("does not render blocked 591 entries as direct href links", () => {
+    renderApp();
+
+    const firstRowAction = document.querySelector("tbody tr .open-link");
+    expect(firstRowAction.tagName).toBe("BUTTON");
+    expect(firstRowAction.hasAttribute("href")).toBe(false);
+    expect(firstRowAction.getAttribute("title")).toContain("591");
+
+    const detailAction = document.querySelector(".detail .primary-link");
+    expect(detailAction.tagName).toBe("BUTTON");
+    expect(detailAction.hasAttribute("href")).toBe(false);
+    expect(detailAction.textContent).toContain("591");
+  });
 });

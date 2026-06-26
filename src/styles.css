@@ -677,11 +677,17 @@ tbody tr.selected-row {
 
 .open-link {
   align-items: center;
+  background: transparent;
+  border: 0;
   color: #0f766e;
   display: inline-flex;
   height: 28px;
   justify-content: center;
   width: 28px;
+}
+
+.blocked-link {
+  color: #b45309;
 }
 
 .detail {
@@ -736,6 +742,7 @@ dd {
 
 .primary-link {
   background: #0f766e;
+  border: 0;
   border-radius: 8px;
   color: #fff;
   gap: 8px;

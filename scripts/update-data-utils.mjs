@@ -8,7 +8,40 @@ export function shouldDropListingAfterDetailError(listing, error) {
       ? error
       : [error.message, error.stderr, error.stdout].filter(Boolean).join("\n");
 
-  return /requested url returned error:\s*404/i.test(message);
+  return /requested url returned error:\s*(404|406|410)/i.test(message);
+}
+
+export function buildListingLookupUrl(listing) {
+  if (!listing || typeof listing.url !== "string") return "";
+  if (listing.source !== "591") return listing.url;
+
+  const sourceUrl = listing.sourceUrl || listing.url;
+  const sourceId = String(sourceUrl).match(/rent\.591\.com\.tw\/(\d+)/)?.[1] || "";
+  const keywords = String(listing.title || "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  const query = ["site:rent.591.com.tw", sourceId, keywords].filter(Boolean).join(" ");
+  const params = new URLSearchParams({ q: query });
+
+  return `https://www.google.com/search?${params.toString()}`;
+}
+
+export function normalizeListingForWrite(listing) {
+  if (!listing) return listing;
+
+  if (listing.source !== "591") {
+    return {
+      ...listing,
+      sourceUrl: listing.sourceUrl || listing.url,
+    };
+  }
+
+  return {
+    ...listing,
+    sourceUrl: listing.sourceUrl || listing.url,
+    url: buildListingLookupUrl(listing),
+  };
 }
 
 export function canReusePreviousListingDetails(currentListing, previousListing) {
