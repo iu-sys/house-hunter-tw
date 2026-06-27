@@ -9,4 +9,8 @@ describe("package scripts", () => {
     expect(packageJson.scripts.publish).toBe("npm run build && npm run deploy:pages");
     expect(packageJson.scripts.publish).not.toContain("netlify");
   });
+
+  it("provides a single command for the full daily refresh and publish flow", () => {
+    expect(packageJson.scripts["refresh:site"]).toBe("node scripts/refresh-site.mjs");
+  });
 });

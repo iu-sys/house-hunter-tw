@@ -9,6 +9,7 @@
     "deploy:pages": "node scripts/deploy-pages.mjs",
     "deploy:netlify": "npx netlify-cli deploy --prod --dir dist --site 23ddef74-9470-4dc9-b5fb-53096501534e",
     "publish": "npm run build && npm run deploy:pages",
+    "refresh:site": "node scripts/refresh-site.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "update:data": "node scripts/update-data.mjs"
