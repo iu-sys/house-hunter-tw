@@ -41,6 +41,9 @@ const PTT_BOARDS = ["Rent_tao", "Rent_apart"];
 const PTT_MAX_PAGES_PER_BOARD = 8;
 const PTT_RECENT_DAYS = 3;
 const MIN_SAFE_LISTING_COUNT = 500;
+const LIST_PAGE_CONCURRENCY = Number(process.env.LIST_PAGE_CONCURRENCY || 12);
+const DETAIL_CONCURRENCY = Number(process.env.DETAIL_CONCURRENCY || 12);
+const PTT_ARTICLE_CONCURRENCY = Number(process.env.PTT_ARTICLE_CONCURRENCY || 8);
 
 const BLOCKED_TEXT = [
   "車位",
@@ -454,6 +457,84 @@ async function fetchPttListings() {
   return listings;
 }
 
+async function fetchPttListingsFast() {
+  const taipeiNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" }));
+  const cutoff = new Date(taipeiNow);
+  cutoff.setDate(cutoff.getDate() - PTT_RECENT_DAYS);
+  const listings = [];
+
+  for (const board of PTT_BOARDS) {
+    let page = "index";
+
+    try {
+      for (let pageCount = 0; page && pageCount < PTT_MAX_PAGES_PER_BOARD; pageCount += 1) {
+        console.log(`PTT page progress: ${board} ${pageCount + 1}/${PTT_MAX_PAGES_PER_BOARD}`);
+        const html = await fetchPttPage(board, page);
+        const document = new JSDOM(html).window.document;
+        const entries = [...document.querySelectorAll(".r-ent")]
+          .map((entry) => {
+            const link = entry.querySelector(".title a");
+            const title = link?.textContent.trim() || "";
+            const href = link?.getAttribute("href") || "";
+            return {
+              title,
+              url: href ? `https://www.ptt.cc${href}` : "",
+              dateText: entry.querySelector(".date")?.textContent.trim() || "",
+            };
+          })
+          .filter((entry) => entry.url && entry.title)
+          .filter(
+            (entry) =>
+              !entry.title.includes("[敺菜?]") &&
+              !entry.title.includes("?砍?") &&
+              !isPttFemaleOnlyTitle(entry.title) &&
+              !PTT_BLOCKED_TITLE_TEXT.some((blocked) => entry.title.includes(blocked)),
+          );
+
+        const pageListings = await mapWithProgress(
+          entries,
+          PTT_ARTICLE_CONCURRENCY,
+          async (entry) => {
+            try {
+              const articleHtml = await fetchWithRetry(entry.url, {
+                headers: {
+                  Accept: "text/html,application/xhtml+xml",
+                  Cookie: "over18=1",
+                  "User-Agent": userAgent,
+                },
+              });
+              const articleDocument = new JSDOM(articleHtml).window.document;
+              const articleDate = getPttArticleDate(articleDocument, entry.dateText);
+              if (articleDate < cutoff) return null;
+
+              const listing = parsePttListing({
+                board,
+                title: entry.title,
+                url: entry.url,
+                dateText: entry.dateText,
+                document: articleDocument,
+              });
+
+              return shouldKeep(listing) && listing.text.includes("憟") ? listing : null;
+            } catch (error) {
+              console.warn(`Skipped PTT article ${entry.url}: ${error.message}`);
+              return null;
+            }
+          },
+          `PTT article progress ${board} page ${pageCount + 1}`,
+        );
+
+        listings.push(...pageListings.filter(Boolean));
+        page = getPttPreviousPage(document);
+      }
+    } catch (error) {
+      console.warn(`Skipped PTT board ${board}: ${error.message}`);
+    }
+  }
+
+  return listings;
+}
+
 function isMetroWithinTenMinutes(text) {
   const distanceMatches = [...text.matchAll(/距[^0-9\s]{1,20}\s*(\d{2,4})\s*公尺/g)];
   if (distanceMatches.some((match) => Number(match[1]) <= 800)) return true;
@@ -613,6 +694,25 @@ async function mapWithConcurrency(items, limit, mapper) {
   return results;
 }
 
+async function mapWithProgress(items, limit, mapper, label) {
+  let completed = 0;
+
+  return mapWithConcurrency(items, limit, async (...args) => {
+    const result = await mapper(...args);
+    completed += 1;
+
+    if (
+      completed === items.length ||
+      completed === 1 ||
+      completed % Math.max(10, Math.floor(items.length / 10)) === 0
+    ) {
+      console.log(`${label}: ${completed}/${items.length}`);
+    }
+
+    return result;
+  });
+}
+
 function serializeListings(listings) {
   const rows = listings
     .map((listing) =>
@@ -695,7 +795,7 @@ const listTargets = regionFirstPages.flatMap(({ region, pageCount }) =>
 
 const listPages = [
   ...regionFirstPages.map(({ listings }) => listings),
-  ...(await mapWithConcurrency(listTargets, 4, async ({ region, page }) => {
+  ...(await mapWithProgress(listTargets, LIST_PAGE_CONCURRENCY, async ({ region, page }) => {
     try {
       const html = await fetchListPage(region, page);
       const document = new JSDOM(html).window.document;
@@ -704,12 +804,12 @@ const listPages = [
       console.warn(`Skipped 591 list page region=${region} page=${page}: ${error.message}`);
       return [];
     }
-  })),
+  }, "List page progress")),
 ];
 
 allListings.push(...listPages.flat());
 
-const pttListings = await fetchPttListings();
+const pttListings = await fetchPttListingsFast();
 allListings.push(...pttListings);
 
 const uniqueListings = [...new Map(allListings.map((listing) => [listing.url, listing])).values()];
@@ -730,7 +830,12 @@ console.log(
 
 const enrichedListings = [
   ...readyListings,
-  ...(await mapWithConcurrency(listingsNeedingEnrichment, 4, enrichListing)).filter(Boolean),
+  ...(await mapWithProgress(
+    listingsNeedingEnrichment,
+    DETAIL_CONCURRENCY,
+    enrichListing,
+    "Detail enrichment progress",
+  )).filter(Boolean),
 ];
 const rejectedByGender = enrichedListings.filter((listing) => !listing.isMaleAllowed);
 const nextListings = enrichedListings
