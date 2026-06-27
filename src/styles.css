@@ -403,6 +403,82 @@ dt {
   padding: 0;
 }
 
+.negative-rules {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.exclude-form {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 58px;
+}
+
+.exclude-form input {
+  background: #fff;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  color: #1b2630;
+  min-height: 36px;
+  outline: 0;
+  padding: 7px 9px;
+}
+
+.exclude-form input:focus {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.14);
+}
+
+.exclude-form button {
+  background: #c2410c;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 850;
+}
+
+.filter-hint {
+  color: #9a3412;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 8px 0 0;
+}
+
+.exclude-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.exclude-chip {
+  align-items: center;
+  background: #ffedd5;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  color: #7c2d12;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 750;
+  gap: 6px;
+  padding: 5px 6px 5px 10px;
+}
+
+.exclude-chip button {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  color: #9a3412;
+  display: inline-flex;
+  height: 22px;
+  justify-content: center;
+  padding: 0;
+  width: 22px;
+}
+
 .custom-empty {
   color: #64748b;
   font-size: 13px;

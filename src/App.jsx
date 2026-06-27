@@ -62,6 +62,14 @@ function getListingHref(listing) {
   return listing.source === "591" ? listing.sourceUrl || listing.url : listing.url;
 }
 
+function isDoNotShowRule(rule) {
+  return (
+    rule?.type === "exclude" &&
+    rule?.mode === "required" &&
+    String(rule.label || "").startsWith("不要 ")
+  );
+}
+
 function createCustomRule() {
   return {
     ...defaultCustomRule,
@@ -118,6 +126,7 @@ export default function App() {
   const [customRules, setCustomRules] = useState(loadCustomRules);
   const [isAddingRule, setIsAddingRule] = useState(false);
   const [draftRule, setDraftRule] = useState(createDraftRule);
+  const [excludedKeywordDraft, setExcludedKeywordDraft] = useState("");
   const [refreshNote, setRefreshNote] = useState("");
 
   useEffect(() => {
@@ -158,6 +167,11 @@ export default function App() {
   const selectedListing =
     visibleListings.find((listing) => listing.id === selectedListingId) || visibleListings[0] || null;
   const visibleStats = getStats(visibleListings);
+  const doNotShowRules = customRules.filter((rule) => rule.label.trim() && isDoNotShowRule(rule));
+  const visibleCustomRules = customRules.filter(
+    (rule) => rule.label.trim() && !isDoNotShowRule(rule),
+  );
+
   function updateCustomRule(id, patch) {
     setCustomRules((rules) =>
       rules.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)),
@@ -183,6 +197,23 @@ export default function App() {
     ]);
     setDraftRule(createDraftRule());
     setIsAddingRule(false);
+  }
+
+  function addExcludedKeyword() {
+    const value = excludedKeywordDraft.trim();
+    if (!value) return;
+
+    setCustomRules((rules) => [
+      ...rules,
+      {
+        ...createCustomRule(),
+        label: `不要 ${value}`,
+        type: "exclude",
+        mode: "required",
+        value,
+      },
+    ]);
+    setExcludedKeywordDraft("");
   }
 
   return (
@@ -293,6 +324,56 @@ export default function App() {
             只看新上架
           </label>
 
+          <section className="negative-rules">
+            <div className="filter-head">
+              <span>不要出現</span>
+              {doNotShowRules.length > 0 && (
+                <button
+                  onClick={() =>
+                    setCustomRules((rules) => rules.filter((rule) => !isDoNotShowRule(rule)))
+                  }
+                >
+                  全部清除
+                </button>
+              )}
+            </div>
+            <div className="exclude-form">
+              <input
+                aria-label="不要出現關鍵字"
+                value={excludedKeywordDraft}
+                onChange={(event) => setExcludedKeywordDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addExcludedKeyword();
+                  }
+                }}
+                placeholder="例如：頂加、地下室、無窗"
+              />
+              <button aria-label="新增排除條件" onClick={addExcludedKeyword}>
+                排除
+              </button>
+            </div>
+            <p className="filter-hint">輸入你不想看到的字；標題、區域、捷運或條件命中就會被篩掉。</p>
+            {doNotShowRules.length > 0 && (
+              <div className="exclude-chips">
+                {doNotShowRules.map((rule) => (
+                  <span className="exclude-chip" key={rule.id}>
+                    <span>{rule.value}</span>
+                    <button
+                      aria-label={`刪除排除${rule.value}`}
+                      onClick={() =>
+                        setCustomRules((rules) => rules.filter((item) => item.id !== rule.id))
+                      }
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+
           <section className="custom-rules">
             <div className="filter-head">
               <span>我的條件</span>
@@ -316,9 +397,7 @@ export default function App() {
                   <span>{condition}</span>
                 </label>
               ))}
-              {customRules
-                .filter((rule) => rule.label.trim())
-                .map((rule) => (
+              {visibleCustomRules.map((rule) => (
                   <span
                     className={
                       rule.enabled !== false
@@ -407,7 +486,7 @@ export default function App() {
                   />
               </div>
             )}
-            {customRules.filter((rule) => rule.label.trim()).length === 0 && !isAddingRule && (
+            {visibleCustomRules.length === 0 && !isAddingRule && (
               <p className="custom-empty">尚未加入自訂條件</p>
             )}
           </section>

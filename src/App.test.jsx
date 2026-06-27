@@ -16,6 +16,12 @@ function renderApp() {
   });
 }
 
+function setInputValue(input, value) {
+  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+  valueSetter.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 describe("App", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -74,5 +80,36 @@ describe("App", () => {
     expect(detailAction.tagName).toBe("A");
     expect(detailAction.getAttribute("href")).toBe(firstRowAction.getAttribute("href"));
     expect(detailAction.textContent).toContain("打開物件");
+  });
+  it("adds a do-not-show keyword filter that removes matching listings", () => {
+    renderApp();
+
+    const firstTitle = document.querySelector("tbody tr .title-cell span:last-child").textContent;
+    const initialRowCount = document.querySelectorAll("tbody tr").length;
+    const excludeInput = document.querySelector('input[aria-label="不要出現關鍵字"]');
+
+    expect(excludeInput).toBeTruthy();
+    act(() => {
+      setInputValue(excludeInput, firstTitle);
+      document.querySelector('button[aria-label="新增排除條件"]').click();
+    });
+
+    const visibleTitles = [...document.querySelectorAll("tbody tr .title-cell span:last-child")].map(
+      (title) => title.textContent,
+    );
+    const savedRules = JSON.parse(localStorage.getItem("house-hunter-custom-rules"));
+
+    expect(document.querySelectorAll("tbody tr").length).toBeLessThan(initialRowCount);
+    expect(visibleTitles).not.toContain(firstTitle);
+    expect(savedRules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: `不要 ${firstTitle}`,
+          type: "exclude",
+          mode: "required",
+          value: firstTitle,
+        }),
+      ]),
+    );
   });
 });
