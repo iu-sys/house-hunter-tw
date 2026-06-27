@@ -1,5 +1,10 @@
 export const DETAIL_FETCH_FAILURE_LABEL = "詳情頁讀取失敗";
 
+export function shouldDropListingAfterStatusCode(listing, statusCode) {
+  if (!listing || listing.source !== "591") return false;
+  return [404, 410].includes(Number(statusCode));
+}
+
 export function shouldDropListingAfterDetailError(listing, error) {
   if (!listing || listing.source !== "591" || !error) return false;
 

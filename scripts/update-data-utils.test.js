@@ -7,6 +7,7 @@ import {
   normalizeListingForWrite,
   prepareListingsForEnrichment,
   resolveListingWritePlan,
+  shouldDropListingAfterStatusCode,
   shouldDropListingAfterDetailError,
 } from "./update-data-utils.mjs";
 
@@ -99,6 +100,14 @@ describe("update-data utils", () => {
     expect(
       shouldDropListingAfterDetailError({ ...baseListing, source: "PTT" }, curl404Error),
     ).toBe(false);
+  });
+
+  it("drops reused 591 listings when a lightweight status check returns 404 or 410", () => {
+    expect(shouldDropListingAfterStatusCode(baseListing, 404)).toBe(true);
+    expect(shouldDropListingAfterStatusCode(baseListing, 410)).toBe(true);
+    expect(shouldDropListingAfterStatusCode(baseListing, 406)).toBe(false);
+    expect(shouldDropListingAfterStatusCode(baseListing, 200)).toBe(false);
+    expect(shouldDropListingAfterStatusCode({ ...baseListing, source: "PTT" }, 404)).toBe(false);
   });
 
   it("keeps the original 591 source URL for click-through links", () => {

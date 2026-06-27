@@ -8,6 +8,7 @@ import {
   normalizeListingForWrite,
   prepareListingsForEnrichment,
   resolveListingWritePlan,
+  shouldDropListingAfterStatusCode,
   shouldDropListingAfterDetailError,
 } from "./update-data-utils.mjs";
 import { listings as previousListings } from "../src/data/listings.js";
@@ -44,6 +45,7 @@ const MIN_SAFE_LISTING_COUNT = 500;
 const LIST_PAGE_CONCURRENCY = Number(process.env.LIST_PAGE_CONCURRENCY || 12);
 const DETAIL_CONCURRENCY = Number(process.env.DETAIL_CONCURRENCY || 12);
 const PTT_ARTICLE_CONCURRENCY = Number(process.env.PTT_ARTICLE_CONCURRENCY || 8);
+const LIVE_STATUS_CONCURRENCY = Number(process.env.LIVE_STATUS_CONCURRENCY || 16);
 
 const BLOCKED_TEXT = [
   "車位",
@@ -278,6 +280,35 @@ async function fetchWithRetry(url, options = {}, retries = 3) {
   }
 
   throw lastError;
+}
+
+async function fetchStatusCode(url, headers = {}) {
+  const args = [
+    "-sS",
+    "-L",
+    "--compressed",
+    "--connect-timeout",
+    "15",
+    "--max-time",
+    "25",
+    "-o",
+    "NUL",
+    "-w",
+    "%{http_code}",
+  ];
+
+  for (const [name, value] of Object.entries(headers)) {
+    args.push("-H", `${name}: ${value}`);
+  }
+
+  args.push(url);
+
+  const { stdout } = await execFileAsync("curl", args, {
+    encoding: "utf8",
+    maxBuffer: 1024 * 1024,
+  });
+
+  return Number(String(stdout || "").trim());
 }
 
 async function fetchPttPage(board, page = "index") {
@@ -713,6 +744,41 @@ async function mapWithProgress(items, limit, mapper, label) {
   });
 }
 
+async function verifyReusedListingsStillLive(listings) {
+  return (
+    await mapWithProgress(
+      listings,
+      LIVE_STATUS_CONCURRENCY,
+      async (listing) => {
+        if (listing.source !== "591") return listing;
+
+        try {
+          const statusCode = await fetchStatusCode(listing.sourceUrl || listing.url, {
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            Referer: "https://rent.591.com.tw/list?region=1&kind=2,3",
+            "User-Agent": userAgent,
+          });
+
+          if (shouldDropListingAfterStatusCode(listing, statusCode)) {
+            console.warn(
+              `Dropped stale reused 591 listing ${listing.sourceUrl || listing.url}: status ${statusCode}`,
+            );
+            return null;
+          }
+
+          return listing;
+        } catch (error) {
+          console.warn(
+            `Skipped live status check for reused 591 listing ${listing.sourceUrl || listing.url}: ${error.message}`,
+          );
+          return listing;
+        }
+      },
+      "Reused listing live check",
+    )
+  ).filter(Boolean);
+}
+
 function serializeListings(listings) {
   const rows = listings
     .map((listing) =>
@@ -823,13 +889,14 @@ const { readyListings, listingsNeedingEnrichment } = prepareListingsForEnrichmen
   basicListings,
   previousListingsByUrl,
 );
+const verifiedReadyListings = await verifyReusedListingsStillLive(readyListings);
 console.log(
   `Checking ${listingsNeedingEnrichment.length} candidate listings against detail conditions ` +
-    `(${readyListings.length} reused from previous data)...`,
+    `(${verifiedReadyListings.length} reused from previous data after live-link checks)...`,
 );
 
 const enrichedListings = [
-  ...readyListings,
+  ...verifiedReadyListings,
   ...(await mapWithProgress(
     listingsNeedingEnrichment,
     DETAIL_CONCURRENCY,
