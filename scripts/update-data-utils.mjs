@@ -1,5 +1,23 @@
 export const DETAIL_FETCH_FAILURE_LABEL = "詳情頁讀取失敗";
 
+const NON_RESIDENTIAL_SUITE_PATTERNS = [
+  /\u4e0b\u55ae\u684c/u,
+  /\u684c\u4f4d/u,
+  /\u5ea7\u4f4d/u,
+  /\u64cd\u76e4\u5ba4/u,
+  /\u53ef\u8fa6\u516c/u,
+  /\u8fa6\u516c\u5ba4/u,
+  /\u5de5\u4f5c\u5ba4/u,
+  /\u5171\u540c\u5de5\u4f5c/u,
+  /\u5171\u4eab\u8fa6\u516c/u,
+  /\u5546\u52d9\u7a7a\u9593/u,
+];
+
+export function hasNonResidentialSuiteText(text) {
+  const normalizedText = typeof text === "string" ? text : "";
+  return NON_RESIDENTIAL_SUITE_PATTERNS.some((pattern) => pattern.test(normalizedText));
+}
+
 export function shouldDropListingAfterStatusCode(listing, statusCode) {
   if (!listing || listing.source !== "591") return false;
   return [404, 410].includes(Number(statusCode));

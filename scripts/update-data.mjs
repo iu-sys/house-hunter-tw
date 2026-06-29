@@ -5,6 +5,7 @@ import { JSDOM } from "jsdom";
 import {
   DETAIL_FETCH_FAILURE_LABEL,
   getMaxListPage,
+  hasNonResidentialSuiteText,
   normalizeListingForWrite,
   prepareListingsForEnrichment,
   resolveListingWritePlan,
@@ -184,7 +185,10 @@ function isPttFemaleOnlyTitle(title) {
 }
 
 function hasExcludedListingText(text) {
-  return EXCLUDED_LISTING_PATTERNS.some((pattern) => pattern.test(text));
+  return (
+    EXCLUDED_LISTING_PATTERNS.some((pattern) => pattern.test(text)) ||
+    hasNonResidentialSuiteText(text)
+  );
 }
 
 function isAdministrativeOnlyListing(listing, text) {

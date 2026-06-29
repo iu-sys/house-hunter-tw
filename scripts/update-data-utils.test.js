@@ -4,6 +4,7 @@ import {
   DETAIL_FETCH_FAILURE_LABEL,
   canReusePreviousListingDetails,
   getMaxListPage,
+  hasNonResidentialSuiteText,
   normalizeListingForWrite,
   prepareListingsForEnrichment,
   resolveListingWritePlan,
@@ -108,6 +109,24 @@ describe("update-data utils", () => {
     expect(shouldDropListingAfterStatusCode(baseListing, 406)).toBe(false);
     expect(shouldDropListingAfterStatusCode(baseListing, 200)).toBe(false);
     expect(shouldDropListingAfterStatusCode({ ...baseListing, source: "PTT" }, 404)).toBe(false);
+  });
+
+  it("detects office or desk listings that are not residential suites", () => {
+    expect(
+      hasNonResidentialSuiteText(
+        "\u81ea\u79df\u5c08\u8077\u6295\u8cc7\u4eba\u97ed\u83dc\u80a1\u7968\u4e0b\u55ae\u684c\u64cd\u76e4\u5ba4",
+      ),
+    ).toBe(true);
+    expect(hasNonResidentialSuiteText("\u4e00\u6a13\u65b0\u6574\u7406\u53ef\u5de5\u4f5c\u5ba4")).toBe(
+      true,
+    );
+    expect(hasNonResidentialSuiteText("\u7368\u7acb\u5957\u623f\u53ef\u8fa6\u516c\u5ba4")).toBe(
+      true,
+    );
+
+    expect(hasNonResidentialSuiteText("\u65b0\u5e97\u6377\u904b\u7ad9\u7368\u7acb\u5957\u623f")).toBe(
+      false,
+    );
   });
 
   it("keeps the original 591 source URL for click-through links", () => {
