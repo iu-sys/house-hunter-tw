@@ -133,4 +133,27 @@ describe("custom conditions", () => {
       ),
     ).toEqual([]);
   });
+
+  it("matches electricity-rate exclusions across spaces and alternate numerals", () => {
+    expect(
+      applyCustomConditions(
+        [{ ...listing, searchText: "電費 ㄧ 度 ６ 元" }],
+        [{ id: "a", label: "不要電一度6塊", type: "exclude", mode: "required", value: "電一度6塊" }],
+      ),
+    ).toEqual([]);
+
+    expect(
+      applyCustomConditions(
+        [{ ...listing, searchText: "電費一度6元" }],
+        [{ id: "b", label: "不要電 一度6塊", type: "exclude", mode: "required", value: "電 一度6塊" }],
+      ),
+    ).toEqual([]);
+
+    expect(
+      applyCustomConditions(
+        [{ ...listing, searchText: "台水台電，電費5元內" }],
+        [{ id: "c", label: "不要電 一度6塊", type: "exclude", mode: "required", value: "電 一度6塊" }],
+      ),
+    ).toHaveLength(1);
+  });
 });

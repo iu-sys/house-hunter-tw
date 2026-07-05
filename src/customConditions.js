@@ -20,7 +20,30 @@ export const baseConditionLabels = [
 
 const keywordAliases = [
   ["頂加", "頂樓加蓋", "頂樓加建", "頂樓增建"],
-  ["一度6塊", "一度6元", "一度6", "每度6", "每度6元", "電費6", "電費6元", "6塊", "6元/度", "6元一度", "六塊", "六元"],
+  [
+    "一度6塊",
+    "一度6元",
+    "一度6",
+    "每度6",
+    "每度6元",
+    "電6",
+    "電6元",
+    "電費6",
+    "電費6元",
+    "電一度6塊",
+    "電一度6元",
+    "電費一度6塊",
+    "電費一度6元",
+    "電每度6塊",
+    "電每度6元",
+    "電費每度6塊",
+    "電費每度6元",
+    "6塊",
+    "6元/度",
+    "6元一度",
+    "六塊",
+    "六元",
+  ],
 ];
 
 export function parseKeywords(value) {
@@ -42,6 +65,25 @@ function expandKeywordAliases(keywords) {
   }
 
   return [...expanded];
+}
+
+function normalizeComparableText(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(/ㄧ/g, "一")
+    .toLocaleLowerCase("zh-Hant")
+    .replace(/[\s\p{P}\p{S}]+/gu, "");
+}
+
+function isElectricityRateKeyword(keyword) {
+  const normalized = normalizeComparableText(keyword);
+  return /[6六]/.test(normalized) && /(度|塊|元)/.test(normalized);
+}
+
+function removeBroadElectricityKeywords(keywords) {
+  if (!keywords.some(isElectricityRateKeyword)) return keywords;
+
+  return keywords.filter((keyword) => !["電", "電費"].includes(normalizeComparableText(keyword)));
 }
 
 export function buildListingText(listing) {
@@ -89,10 +131,13 @@ export function normalizeBaseConditions(activeBaseConditions = baseConditionLabe
 }
 
 function ruleMatchesText(rule, text) {
-  const keywords = expandKeywordAliases(parseKeywords(rule.value)).map((keyword) =>
-    keyword.toLocaleLowerCase("zh-Hant"),
-  );
-  const hasKeyword = keywords.some((keyword) => text.includes(keyword));
+  const keywords = expandKeywordAliases(removeBroadElectricityKeywords(parseKeywords(rule.value)))
+    .map((keyword) => keyword.toLocaleLowerCase("zh-Hant"));
+  const compactText = normalizeComparableText(text);
+  const hasKeyword = keywords.some((keyword) => {
+    const compactKeyword = normalizeComparableText(keyword);
+    return text.includes(keyword) || (compactKeyword && compactText.includes(compactKeyword));
+  });
   return rule.type === "exclude" ? !hasKeyword : hasKeyword;
 }
 
