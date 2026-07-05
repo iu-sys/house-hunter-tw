@@ -73,6 +73,7 @@ export function canReusePreviousListingDetails(currentListing, previousListing) 
 
   if (matchedConditions.length === 0 && missingConditions.length === 0) return false;
   if (missingConditions.includes(DETAIL_FETCH_FAILURE_LABEL)) return false;
+  if (!String(previousListing.searchText || "").trim()) return false;
 
   return true;
 }
@@ -82,6 +83,7 @@ export function restorePreviousListingDetails(currentListing, previousListing) {
     ...currentListing,
     matchedConditions: [...previousListing.matchedConditions],
     missingConditions: [...previousListing.missingConditions],
+    searchText: previousListing.searchText,
     isMaleAllowed: previousListing.isMaleAllowed ?? true,
   };
 }

@@ -43,6 +43,10 @@ describe("custom conditions", () => {
     expect(buildListingText(listing)).toContain("有租補");
   });
 
+  it("builds searchable text from hidden detail text", () => {
+    expect(buildListingText({ ...listing, searchText: "電費一度6塊" })).toContain("一度6塊");
+  });
+
   it("filters required include and exclude rules, then adds bonus matches", () => {
     const result = applyCustomConditions([listing], [
       { id: "a", label: "要可貓", type: "include", mode: "required", value: "可貓" },
@@ -51,9 +55,21 @@ describe("custom conditions", () => {
     ]);
 
     expect(result).toHaveLength(1);
-    expect(result[0].customMatchedConditions).toEqual(["要可貓", "不要頂加", "垃圾代收"]);
-    expect(result[0].customConditionScore).toBe(3);
-    expect(result[0].conditionScore).toBe(5);
+    expect(result[0].customMatchedConditions).toEqual(["要可貓", "垃圾代收"]);
+    expect(result[0].customConditionScore).toBe(2);
+    expect(result[0].conditionScore).toBe(4);
+  });
+
+  it("does not display or score satisfied exclude rules on kept listings", () => {
+    const result = applyCustomConditions([listing], [
+      { id: "a", label: "不要頂加", type: "exclude", mode: "required", value: "頂加" },
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].matchedConditions).toEqual(["有網路", "冰箱"]);
+    expect(result[0].customMatchedConditions).toEqual([]);
+    expect(result[0].customConditionScore).toBe(0);
+    expect(result[0].conditionScore).toBe(2);
   });
 
   it("uses the custom condition label as keywords when the keyword field is empty", () => {
@@ -83,6 +99,38 @@ describe("custom conditions", () => {
       applyCustomConditions([listing], [
         { id: "a", label: "不要垃圾代收", type: "exclude", mode: "required", value: "垃圾代收" },
       ]),
+    ).toEqual([]);
+  });
+
+  it("treats top-floor addition phrases as equivalent for exclusion rules", () => {
+    expect(
+      applyCustomConditions(
+        [{ ...listing, title: "捷運旁頂加套房" }],
+        [{ id: "a", label: "不要頂樓加蓋", type: "exclude", mode: "required", value: "頂樓加蓋" }],
+      ),
+    ).toEqual([]);
+
+    expect(
+      applyCustomConditions(
+        [{ ...listing, title: "捷運旁頂樓加蓋套房" }],
+        [{ id: "b", label: "不要頂加", type: "exclude", mode: "required", value: "頂加" }],
+      ),
+    ).toEqual([]);
+  });
+
+  it("treats common electricity-rate phrases as equivalent for exclusion rules", () => {
+    expect(
+      applyCustomConditions(
+        [{ ...listing, searchText: "電費6元/度" }],
+        [{ id: "a", label: "不要一度6塊", type: "exclude", mode: "required", value: "一度6塊" }],
+      ),
+    ).toEqual([]);
+
+    expect(
+      applyCustomConditions(
+        [{ ...listing, searchText: "每度6元" }],
+        [{ id: "b", label: "不要6塊", type: "exclude", mode: "required", value: "6塊" }],
+      ),
     ).toEqual([]);
   });
 });

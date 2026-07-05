@@ -28,6 +28,7 @@ describe("update-data utils", () => {
       ...baseListing,
       matchedConditions: ["\u5c0d\u5916\u7a97", "\u6377\u904b10\u5206\u5167"],
       missingConditions: ["711\u8d70\u8def2\u5206\u9418\u5167"],
+      searchText: "\u96fb\u8cbb\u4e00\u5ea66\u584a",
       isMaleAllowed: true,
     };
 
@@ -44,9 +45,29 @@ describe("update-data utils", () => {
         ...baseListing,
         matchedConditions: ["\u5c0d\u5916\u7a97", "\u6377\u904b10\u5206\u5167"],
         missingConditions: ["711\u8d70\u8def2\u5206\u9418\u5167"],
+        searchText: "\u96fb\u8cbb\u4e00\u5ea66\u584a",
         isMaleAllowed: true,
       },
     ]);
+  });
+
+  it("refetches previous 591 detail matches when hidden search text is missing", () => {
+    const previousListing = {
+      ...baseListing,
+      matchedConditions: ["\u5c0d\u5916\u7a97"],
+      missingConditions: [],
+      isMaleAllowed: true,
+    };
+
+    expect(canReusePreviousListingDetails(baseListing, previousListing)).toBe(false);
+
+    const { readyListings, listingsNeedingEnrichment } = prepareListingsForEnrichment(
+      [baseListing],
+      new Map([[baseListing.url, previousListing]]),
+    );
+
+    expect(readyListings).toEqual([]);
+    expect(listingsNeedingEnrichment).toEqual([baseListing]);
   });
 
   it("reuses previous details even if summary fields changed, but refetches prior failures", () => {
@@ -59,6 +80,7 @@ describe("update-data utils", () => {
       ...baseListing,
       matchedConditions: ["\u5c0d\u5916\u7a97"],
       missingConditions: [],
+      searchText: "\u96fb\u8cbb\u4e00\u5ea66\u584a",
       isMaleAllowed: true,
     };
     const previousFailedListing = {
@@ -83,6 +105,7 @@ describe("update-data utils", () => {
         ...changedPrice,
         matchedConditions: ["\u5c0d\u5916\u7a97"],
         missingConditions: [],
+        searchText: "\u96fb\u8cbb\u4e00\u5ea66\u584a",
         isMaleAllowed: true,
       },
     ]);

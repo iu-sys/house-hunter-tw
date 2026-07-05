@@ -112,4 +112,43 @@ describe("App", () => {
       ]),
     );
   });
+
+  it("filters top-floor addition listings when typing the long phrase", () => {
+    renderApp();
+
+    const initialRows = [...document.querySelectorAll("tbody tr")];
+    const initialTopFloorRows = initialRows.filter((row) => {
+      const title = row.querySelector(".title-cell span:last-child").textContent;
+      return title.includes("頂加") || title.includes("頂樓加蓋");
+    });
+    const excludeInput = document.querySelector('input[aria-label="不要出現關鍵字"]');
+
+    expect(initialTopFloorRows.length).toBeGreaterThan(0);
+    act(() => {
+      setInputValue(excludeInput, "頂樓加蓋");
+      document.querySelector('button[aria-label="新增排除條件"]').click();
+    });
+
+    const remainingTopFloorRows = [...document.querySelectorAll("tbody tr")].filter((row) => {
+      const title = row.querySelector(".title-cell span:last-child").textContent;
+      return title.includes("頂加") || title.includes("頂樓加蓋");
+    });
+
+    expect(remainingTopFloorRows).toEqual([]);
+    expect(document.querySelector("tbody").textContent).not.toContain("不要頂樓加蓋");
+  });
+
+  it("filters listings by hidden detail search text", () => {
+    renderApp();
+
+    const initialRowCount = document.querySelectorAll("tbody tr").length;
+    const excludeInput = document.querySelector('input[aria-label="不要出現關鍵字"]');
+
+    act(() => {
+      setInputValue(excludeInput, "一度6塊");
+      document.querySelector('button[aria-label="新增排除條件"]').click();
+    });
+
+    expect(document.querySelectorAll("tbody tr").length).toBeLessThan(initialRowCount);
+  });
 });

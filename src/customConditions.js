@@ -18,11 +18,30 @@ export const baseConditionLabels = [
   "電視",
 ];
 
+const keywordAliases = [
+  ["頂加", "頂樓加蓋", "頂樓加建", "頂樓增建"],
+  ["一度6塊", "一度6元", "一度6", "每度6", "每度6元", "電費6", "電費6元", "6塊", "6元/度", "6元一度", "六塊", "六元"],
+];
+
 export function parseKeywords(value) {
   return String(value || "")
     .split(/[,\n，、\s]+/)
     .map((keyword) => keyword.trim())
     .filter(Boolean);
+}
+
+function expandKeywordAliases(keywords) {
+  const expanded = new Set(keywords);
+
+  for (const keyword of keywords) {
+    for (const aliases of keywordAliases) {
+      if (aliases.includes(keyword)) {
+        aliases.forEach((alias) => expanded.add(alias));
+      }
+    }
+  }
+
+  return [...expanded];
 }
 
 export function buildListingText(listing) {
@@ -33,6 +52,7 @@ export function buildListingText(listing) {
     listing.area,
     listing.metro,
     listing.source,
+    listing.searchText,
     ...(listing.matchedConditions || []),
     ...(listing.missingConditions || []),
   ]
@@ -69,7 +89,9 @@ export function normalizeBaseConditions(activeBaseConditions = baseConditionLabe
 }
 
 function ruleMatchesText(rule, text) {
-  const keywords = parseKeywords(rule.value).map((keyword) => keyword.toLocaleLowerCase("zh-Hant"));
+  const keywords = expandKeywordAliases(parseKeywords(rule.value)).map((keyword) =>
+    keyword.toLocaleLowerCase("zh-Hant"),
+  );
   const hasKeyword = keywords.some((keyword) => text.includes(keyword));
   return rule.type === "exclude" ? !hasKeyword : hasKeyword;
 }
@@ -89,12 +111,16 @@ export function applyCustomConditions(listings, rules, options = {}) {
       );
       const customMatchedConditions = [];
       const customMissingConditions = [];
+      const passedRequiredRuleLabels = [];
 
       for (const rule of normalizedRules) {
         const matched = ruleMatchesText(rule, text);
         if (matched) {
-          customMatchedConditions.push(rule.label);
-        } else {
+          passedRequiredRuleLabels.push(rule.label);
+          if (rule.type !== "exclude") {
+            customMatchedConditions.push(rule.label);
+          }
+        } else if (rule.type !== "exclude") {
           customMissingConditions.push(rule.label);
         }
       }
@@ -105,13 +131,15 @@ export function applyCustomConditions(listings, rules, options = {}) {
         missingConditions: [...baseMissingConditions, ...customMissingConditions],
         customMatchedConditions,
         customMissingConditions,
+        passedRequiredRuleLabels,
         customConditionScore: customMatchedConditions.length,
         conditionScore: baseMatchedConditions.length + customMatchedConditions.length,
       };
     })
     .filter((listing) =>
       normalizedRules.every(
-        (rule) => rule.mode !== "required" || listing.customMatchedConditions.includes(rule.label),
+        (rule) => rule.mode !== "required" || listing.passedRequiredRuleLabels.includes(rule.label),
       ),
-    );
+    )
+    .map(({ passedRequiredRuleLabels, ...listing }) => listing);
 }

@@ -27,7 +27,7 @@ export function applyFilters(listings, filters) {
     const sourceMatch = filters.sources.length === 0 || filters.sources.includes(listing.source);
     const priceMatch = !filters.maxPrice || listing.price <= filters.maxPrice;
     const newMatch = !filters.onlyNew || listing.isNew;
-    const text = `${listing.district} ${listing.title} ${listing.area} ${listing.metro} ${listing.source}`;
+    const text = `${listing.district} ${listing.title} ${listing.area} ${listing.metro} ${listing.source} ${listing.searchText || ""}`;
     const queryMatch = !query || text.toLocaleLowerCase("zh-Hant").includes(query);
 
     return districtMatch && sourceMatch && priceMatch && newMatch && queryMatch;

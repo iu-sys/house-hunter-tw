@@ -47,6 +47,7 @@ const LIST_PAGE_CONCURRENCY = Number(process.env.LIST_PAGE_CONCURRENCY || 12);
 const DETAIL_CONCURRENCY = Number(process.env.DETAIL_CONCURRENCY || 12);
 const PTT_ARTICLE_CONCURRENCY = Number(process.env.PTT_ARTICLE_CONCURRENCY || 8);
 const LIVE_STATUS_CONCURRENCY = Number(process.env.LIVE_STATUS_CONCURRENCY || 16);
+const SEARCH_TEXT_MAX_LENGTH = 2500;
 
 const BLOCKED_TEXT = [
   "車位",
@@ -799,6 +800,7 @@ function serializeListings(listings) {
         listing.isNew,
         listing.matchedConditions,
         listing.missingConditions,
+        listing.searchText || "",
       ]),
     )
     .join(",\n  ");
@@ -815,7 +817,7 @@ const rawListings = [
   ${rows},
 ];
 
-export const listings = rawListings.map(([source, district, price, priceText, title, area, metro, sourceUrl, url, isNew, matchedConditions = [], missingConditions = []], index) => ({
+export const listings = rawListings.map(([source, district, price, priceText, title, area, metro, sourceUrl, url, isNew, matchedConditions = [], missingConditions = [], searchText = ""], index) => ({
   id: \`\${source}-\${index + 1}\`,
   source,
   district,
@@ -829,9 +831,14 @@ export const listings = rawListings.map(([source, district, price, priceText, ti
   isNew,
   matchedConditions,
   missingConditions,
+  searchText,
   conditionScore: matchedConditions.length,
 }));
 `;
+}
+
+function normalizeSearchText(text) {
+  return String(text || "").replace(/\s+/g, " ").trim().slice(0, SEARCH_TEXT_MAX_LENGTH);
 }
 
 const allListings = [];
@@ -918,7 +925,10 @@ const nextListings = enrichedListings
     if (a.isNew !== b.isNew) return Number(b.isNew) - Number(a.isNew);
     return a.price - b.price;
   })
-  .map(({ text, detailText, fullText, detailError, isMaleAllowed, ...listing }) => listing);
+  .map(({ text, detailText, fullText, detailError, isMaleAllowed, ...listing }) => ({
+    ...listing,
+    searchText: normalizeSearchText(fullText || `${listing.title} ${text || ""}`),
+  }));
 
 const writePlan = resolveListingWritePlan({
   nextListings,
