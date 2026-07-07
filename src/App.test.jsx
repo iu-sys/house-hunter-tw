@@ -1,9 +1,68 @@
 // @vitest-environment jsdom
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App.jsx";
 import { updatedAt } from "./data/listings.js";
+
+const mockListings = vi.hoisted(() =>
+  [
+    {
+      source: "591",
+      district: "板橋區",
+      price: 12000,
+      priceText: "12,000元/月",
+      title: "Alpha suite",
+      area: "6坪",
+      metro: "新埔",
+      sourceUrl: "https://rent.591.com.tw/1001",
+      url: "https://rent.591.com.tw/1001",
+      isNew: true,
+      matchedConditions: ["對外窗"],
+      missingConditions: [],
+      searchText: "Alpha suite detail",
+    },
+    {
+      source: "591",
+      district: "中和區",
+      price: 13000,
+      priceText: "13,000元/月",
+      title: "Top \u9802\u6a13\u52a0\u84cb studio",
+      area: "7坪",
+      metro: "景安",
+      sourceUrl: "https://rent.591.com.tw/1002",
+      url: "https://rent.591.com.tw/1002",
+      isNew: false,
+      matchedConditions: ["對外窗"],
+      missingConditions: [],
+      searchText: "Top floor addition detail",
+    },
+    {
+      source: "591",
+      district: "三重區",
+      price: 11000,
+      priceText: "11,000元/月",
+      title: "Hidden detail suite",
+      area: "5坪",
+      metro: "台北橋",
+      sourceUrl: "https://rent.591.com.tw/1003",
+      url: "https://rent.591.com.tw/1003",
+      isNew: false,
+      matchedConditions: ["對外窗"],
+      missingConditions: [],
+      searchText: "\u4e00\u5ea66\u584a only appears in hidden detail",
+    },
+  ].map((listing, index) => ({
+    ...listing,
+    id: `${listing.source}-${index + 1}`,
+    conditionScore: listing.matchedConditions.length,
+  })),
+);
+
+vi.mock("./data/listings.js", () => ({
+  updatedAt: "2026-07-08 04:21",
+  listings: mockListings,
+}));
 
 let root;
 
