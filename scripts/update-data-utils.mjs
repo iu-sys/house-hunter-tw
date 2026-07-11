@@ -13,9 +13,20 @@ const NON_RESIDENTIAL_SUITE_PATTERNS = [
   /\u5546\u52d9\u7a7a\u9593/u,
 ];
 
+const SINGLE_OCCUPANT_RESTRICTION_PATTERNS = [
+  /(?:\u9650|\u50c5\u9650|\u53ea\u9650).{0,8}(?:\u55ae\u4eba|\u4e00\u4eba|1\s*\u4eba|\u55ae\u8eab)/u,
+  /(?:\u55ae\u4eba|\u4e00\u4eba|1\s*\u4eba)\s*(?:\u5165\u4f4f|\u5c45\u4f4f|\u4f4f)/u,
+  /\u9069\u5408\s*\u55ae\u4eba/u,
+];
+
 export function hasNonResidentialSuiteText(text) {
   const normalizedText = typeof text === "string" ? text : "";
   return NON_RESIDENTIAL_SUITE_PATTERNS.some((pattern) => pattern.test(normalizedText));
+}
+
+export function hasSingleOccupantRestrictionText(text) {
+  const normalizedText = typeof text === "string" ? text : "";
+  return SINGLE_OCCUPANT_RESTRICTION_PATTERNS.some((pattern) => pattern.test(normalizedText));
 }
 
 export function shouldDropListingAfterStatusCode(listing, statusCode) {

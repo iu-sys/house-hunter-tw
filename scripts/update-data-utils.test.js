@@ -4,6 +4,7 @@ import {
   DETAIL_FETCH_FAILURE_LABEL,
   canReusePreviousListingDetails,
   getMaxListPage,
+  hasSingleOccupantRestrictionText,
   hasNonResidentialSuiteText,
   normalizeListingForWrite,
   prepareListingsForEnrichment,
@@ -150,6 +151,15 @@ describe("update-data utils", () => {
     expect(hasNonResidentialSuiteText("\u65b0\u5e97\u6377\u904b\u7ad9\u7368\u7acb\u5957\u623f")).toBe(
       false,
     );
+  });
+
+  it("detects single-occupant restrictions in listing text", () => {
+    expect(hasSingleOccupantRestrictionText("限有正職一人住，租賃契約需經公證")).toBe(true);
+    expect(hasSingleOccupantRestrictionText("三重簡約套房出租，適合單人")).toBe(true);
+    expect(hasSingleOccupantRestrictionText("近捷運，低樓層，限單身，飲水機")).toBe(true);
+
+    expect(hasSingleOccupantRestrictionText("單人床獨立套房，男女皆可租住")).toBe(false);
+    expect(hasSingleOccupantRestrictionText("小資族最愛，男女皆可租住")).toBe(false);
   });
 
   it("keeps the original 591 source URL for click-through links", () => {

@@ -6,6 +6,7 @@ import {
   DETAIL_FETCH_FAILURE_LABEL,
   getMaxListPage,
   hasNonResidentialSuiteText,
+  hasSingleOccupantRestrictionText,
   normalizeListingForWrite,
   prepareListingsForEnrichment,
   resolveListingWritePlan,
@@ -188,8 +189,26 @@ function isPttFemaleOnlyTitle(title) {
 function hasExcludedListingText(text) {
   return (
     EXCLUDED_LISTING_PATTERNS.some((pattern) => pattern.test(text)) ||
+    hasSingleOccupantRestrictionText(text) ||
     hasNonResidentialSuiteText(text)
   );
+}
+
+function getListingRestrictionText(listing) {
+  return [
+    listing?.title,
+    listing?.text,
+    listing?.searchText,
+    listing?.detailText,
+    listing?.fullText,
+    listing?.url,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function hasSingleOccupantRestrictionListing(listing) {
+  return hasSingleOccupantRestrictionText(getListingRestrictionText(listing));
 }
 
 function isAdministrativeOnlyListing(listing, text) {
@@ -918,6 +937,7 @@ const enrichedListings = [
 const rejectedByGender = enrichedListings.filter((listing) => !listing.isMaleAllowed);
 const nextListings = enrichedListings
   .filter((listing) => listing.isMaleAllowed)
+  .filter((listing) => !hasSingleOccupantRestrictionListing(listing))
   .sort((a, b) => {
     if (a.matchedConditions.length !== b.matchedConditions.length) {
       return b.matchedConditions.length - a.matchedConditions.length;
@@ -929,10 +949,13 @@ const nextListings = enrichedListings
     ...listing,
     searchText: normalizeSearchText(fullText || `${listing.title} ${text || ""}`),
   }));
+const fallbackListings = previousListings.filter(
+  (listing) => !hasSingleOccupantRestrictionListing(listing),
+);
 
 const writePlan = resolveListingWritePlan({
   nextListings,
-  previousListings,
+  previousListings: fallbackListings,
   minSafeListingCount: MIN_SAFE_LISTING_COUNT,
 });
 const listings = writePlan.listings.map(normalizeListingForWrite);
