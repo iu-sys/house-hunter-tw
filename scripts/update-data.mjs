@@ -639,9 +639,35 @@ function hasSevenElevenWithinTwoMinutes(text) {
   return storePattern.test(text) && /2\s*分|2\s*分鐘|二\s*分|二\s*分鐘/.test(text);
 }
 
+function normalizeImageUrl(value) {
+  const url = String(value || "").trim();
+  if (!url || url.startsWith("data:")) return "";
+  if (url.startsWith("//")) return `https:${url}`;
+  if (url.startsWith("/")) return `https://rent.591.com.tw${url}`;
+  if (/^https?:\/\//i.test(url)) return url;
+  return "";
+}
+
+function extractListingImageUrl(document) {
+  const candidates = [
+    document.querySelector('meta[property="og:image"]')?.getAttribute("content"),
+    document.querySelector('meta[name="twitter:image"]')?.getAttribute("content"),
+    ...[...document.querySelectorAll("img")]
+      .flatMap((image) => [
+        image.getAttribute("data-src"),
+        image.getAttribute("data-original"),
+        image.getAttribute("src"),
+      ])
+      .filter(Boolean),
+  ];
+
+  return candidates.map(normalizeImageUrl).find((url) => /591|addcn|img/.test(url)) || "";
+}
+
 function parseListing(item) {
   const text = item.textContent.replace(/\s+/g, " ").trim();
   const link = item.querySelector(".item-info-title a");
+  const image = item.querySelector("img");
   const title = link?.getAttribute("title")?.trim() || link?.textContent.trim() || "";
   const id = item.getAttribute("data-id") || "";
   const price = Number(
@@ -663,6 +689,12 @@ function parseListing(item) {
     metro,
     sourceUrl: sourceUrl,
     url: sourceUrl,
+    imageUrl: normalizeImageUrl(
+      image?.getAttribute("data-src") ||
+        image?.getAttribute("data-original") ||
+        image?.getAttribute("src") ||
+        "",
+    ),
     isNew,
     text,
   };
@@ -709,6 +741,7 @@ async function enrichListing(listing) {
       ...listing,
       detailText,
       fullText,
+      imageUrl: listing.imageUrl || extractListingImageUrl(document),
       matchedConditions,
       missingConditions: missingRequiredConditions(fullText),
       isMaleAllowed: !FEMALE_ONLY_PATTERNS.some((pattern) => pattern.test(fullText)),
@@ -725,6 +758,7 @@ async function enrichListing(listing) {
       ...listing,
       detailText: "",
       fullText,
+      imageUrl: listing.imageUrl || "",
       matchedConditions,
       missingConditions: [...missingRequiredConditions(fullText), DETAIL_FETCH_FAILURE_LABEL],
       isMaleAllowed: !FEMALE_ONLY_PATTERNS.some((pattern) => pattern.test(fullText)),
@@ -820,6 +854,7 @@ function serializeListings(listings) {
         listing.matchedConditions,
         listing.missingConditions,
         listing.searchText || "",
+        listing.imageUrl || "",
       ]),
     )
     .join(",\n  ");
@@ -836,7 +871,7 @@ const rawListings = [
   ${rows},
 ];
 
-export const listings = rawListings.map(([source, district, price, priceText, title, area, metro, sourceUrl, url, isNew, matchedConditions = [], missingConditions = [], searchText = ""], index) => ({
+export const listings = rawListings.map(([source, district, price, priceText, title, area, metro, sourceUrl, url, isNew, matchedConditions = [], missingConditions = [], searchText = "", imageUrl = ""], index) => ({
   id: \`\${source}-\${index + 1}\`,
   source,
   district,
@@ -851,6 +886,7 @@ export const listings = rawListings.map(([source, district, price, priceText, ti
   matchedConditions,
   missingConditions,
   searchText,
+  imageUrl,
   conditionScore: matchedConditions.length,
 }));
 `;

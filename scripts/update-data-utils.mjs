@@ -90,11 +90,14 @@ export function canReusePreviousListingDetails(currentListing, previousListing) 
 }
 
 export function restorePreviousListingDetails(currentListing, previousListing) {
+  const imageUrl = currentListing.imageUrl || previousListing.imageUrl || "";
+
   return {
     ...currentListing,
     matchedConditions: [...previousListing.matchedConditions],
     missingConditions: [...previousListing.missingConditions],
     searchText: previousListing.searchText,
+    ...(imageUrl ? { imageUrl } : {}),
     isMaleAllowed: previousListing.isMaleAllowed ?? true,
   };
 }

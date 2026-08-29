@@ -197,6 +197,24 @@ describe("update-data utils", () => {
     });
   });
 
+  it("reuses previous thumbnail URLs for unchanged listings", () => {
+    const previousListing = {
+      ...baseListing,
+      imageUrl: "https://images.591.com.tw/house/cover.jpg",
+      matchedConditions: ["\u5c0d\u5916\u7a97"],
+      missingConditions: [],
+      searchText: "\u6709\u7db2\u8def",
+      isMaleAllowed: true,
+    };
+
+    const { readyListings } = prepareListingsForEnrichment(
+      [baseListing],
+      new Map([[baseListing.url, previousListing]]),
+    );
+
+    expect(readyListings[0].imageUrl).toBe("https://images.591.com.tw/house/cover.jpg");
+  });
+
   it("detects the real last 591 list page from pagination links", () => {
     expect(
       getMaxListPage([

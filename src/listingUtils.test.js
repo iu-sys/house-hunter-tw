@@ -29,6 +29,19 @@ describe("listing utilities", () => {
     expect(filtered.map((row) => row.id)).toEqual(["b"]);
   });
 
+  it("filters by minimum and maximum price together", () => {
+    const filtered = applyFilters(rows, {
+      districts: [],
+      minPrice: 9000,
+      maxPrice: 13000,
+      sources: [],
+      onlyNew: false,
+      query: "",
+    });
+
+    expect(filtered.map((row) => row.id)).toEqual(["a"]);
+  });
+
   it("sorts listings by newest first and price ascending", () => {
     expect(sortListings(rows, "price-asc").map((row) => row.id)).toEqual(["b", "a", "c"]);
     expect(sortListings(rows, "new-first").map((row) => row.id)).toEqual(["a", "b", "c"]);

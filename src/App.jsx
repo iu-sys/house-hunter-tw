@@ -4,6 +4,7 @@ import {
   Bell,
   ExternalLink,
   Home,
+  Image as ImageIcon,
   Plus,
   RefreshCw,
   Search,
@@ -116,6 +117,7 @@ function loadActiveBaseConditions() {
 
 export default function App() {
   const [query, setQuery] = useState("");
+  const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState(15000);
   const [selectedDistricts, setSelectedDistricts] = useState([]);
   const [selectedSources, setSelectedSources] = useState([]);
@@ -144,6 +146,7 @@ export default function App() {
   const visibleListings = useMemo(() => {
     const filtered = applyFilters(listings, {
       districts: selectedDistricts,
+      minPrice: Number(minPrice) || 0,
       maxPrice,
       sources: selectedSources,
       onlyNew,
@@ -157,6 +160,7 @@ export default function App() {
     activeBaseConditions,
     customRules,
     maxPrice,
+    minPrice,
     onlyNew,
     query,
     selectedDistricts,
@@ -262,18 +266,39 @@ export default function App() {
 
           <section>
             <div className="filter-head">
-              <span>月租上限</span>
-              <strong>{Number(maxPrice).toLocaleString("zh-TW")} 元</strong>
+              <span>月租區間</span>
+              <strong>
+                {minPrice ? Number(minPrice).toLocaleString("zh-TW") : "不限"} -{" "}
+                {Number(maxPrice).toLocaleString("zh-TW")} 元
+              </strong>
             </div>
-            <input
-              className="slider"
-              type="range"
-              min="7000"
-              max="15000"
-              step="500"
-              value={maxPrice}
-              onChange={(event) => setMaxPrice(Number(event.target.value))}
-            />
+            <div className="price-range">
+              <label>
+                <span>最低租金</span>
+                <input
+                  aria-label="最低租金"
+                  inputMode="numeric"
+                  min="0"
+                  step="500"
+                  type="number"
+                  value={minPrice}
+                  onChange={(event) => setMinPrice(event.target.value)}
+                  placeholder="不限"
+                />
+              </label>
+              <label>
+                <span>最高租金</span>
+                <input
+                  aria-label="最高租金"
+                  inputMode="numeric"
+                  min="0"
+                  step="500"
+                  type="number"
+                  value={maxPrice}
+                  onChange={(event) => setMaxPrice(Number(event.target.value) || 0)}
+                />
+              </label>
+            </div>
           </section>
 
           <section>
@@ -578,6 +603,7 @@ export default function App() {
         <aside className="detail" aria-label="推薦物件">
           {selectedListing ? (
             <>
+              <ListingThumbnail listing={selectedListing} />
               <div className="detail-icon">
                 <Sparkles size={20} />
               </div>
@@ -629,6 +655,26 @@ export default function App() {
         </aside>
       </div>
     </main>
+  );
+}
+
+function ListingThumbnail({ listing }) {
+  if (listing.imageUrl) {
+    return (
+      <img
+        alt={listing.title}
+        className="listing-thumbnail"
+        loading="lazy"
+        src={listing.imageUrl}
+      />
+    );
+  }
+
+  return (
+    <div className="listing-thumbnail placeholder" aria-label="暫無物件縮圖">
+      <ImageIcon size={24} />
+      <span>暫無圖片</span>
+    </div>
   );
 }
 

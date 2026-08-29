@@ -17,6 +17,7 @@ const mockListings = vi.hoisted(() =>
       metro: "新埔",
       sourceUrl: "https://rent.591.com.tw/1001",
       url: "https://rent.591.com.tw/1001",
+      imageUrl: "https://example.com/alpha.jpg",
       isNew: true,
       matchedConditions: ["對外窗"],
       missingConditions: [],
@@ -140,6 +141,46 @@ describe("App", () => {
     expect(detailAction.getAttribute("href")).toBe(firstRowAction.getAttribute("href"));
     expect(detailAction.textContent).toContain("打開物件");
   });
+
+  it("shows the selected listing thumbnail in the detail panel", () => {
+    renderApp();
+
+    const alphaRow = [...document.querySelectorAll("tbody tr")].find((row) =>
+      row.textContent.includes("Alpha suite"),
+    );
+    expect(alphaRow).toBeTruthy();
+
+    act(() => {
+      alphaRow.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const thumbnail = document.querySelector('.detail img[alt="Alpha suite"]');
+
+    expect(thumbnail).toBeTruthy();
+    expect(thumbnail.getAttribute("src")).toBe("https://example.com/alpha.jpg");
+  });
+
+  it("filters listings from a typed monthly rent range", () => {
+    renderApp();
+
+    const minPriceInput = document.querySelector('input[aria-label="最低租金"]');
+    const maxPriceInput = document.querySelector('input[aria-label="最高租金"]');
+
+    expect(minPriceInput).toBeTruthy();
+    expect(maxPriceInput).toBeTruthy();
+
+    act(() => {
+      setInputValue(minPriceInput, "11500");
+      setInputValue(maxPriceInput, "12500");
+    });
+
+    const visibleTitles = [...document.querySelectorAll("tbody tr .title-cell span:last-child")].map(
+      (title) => title.textContent,
+    );
+
+    expect(visibleTitles).toEqual(["Alpha suite"]);
+  });
+
   it("adds a do-not-show keyword filter that removes matching listings", () => {
     renderApp();
 

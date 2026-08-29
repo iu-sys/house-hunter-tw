@@ -25,12 +25,13 @@ export function applyFilters(listings, filters) {
     const districtMatch =
       filters.districts.length === 0 || filters.districts.includes(listing.district);
     const sourceMatch = filters.sources.length === 0 || filters.sources.includes(listing.source);
-    const priceMatch = !filters.maxPrice || listing.price <= filters.maxPrice;
+    const minPriceMatch = !filters.minPrice || listing.price >= filters.minPrice;
+    const maxPriceMatch = !filters.maxPrice || listing.price <= filters.maxPrice;
     const newMatch = !filters.onlyNew || listing.isNew;
     const text = `${listing.district} ${listing.title} ${listing.area} ${listing.metro} ${listing.source} ${listing.searchText || ""}`;
     const queryMatch = !query || text.toLocaleLowerCase("zh-Hant").includes(query);
 
-    return districtMatch && sourceMatch && priceMatch && newMatch && queryMatch;
+    return districtMatch && sourceMatch && minPriceMatch && maxPriceMatch && newMatch && queryMatch;
   });
 }
 
